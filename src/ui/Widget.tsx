@@ -34,9 +34,12 @@ export interface WidgetProps {
 export function Widget({ options, open, onPhaseChange, onClose }: WidgetProps): JSX.Element | null {
   const position = options.position ?? "inline";
 
-  // ESC key dismissal for modal + drawer.
+  const inlineLike = position === "inline" || position === "inline-popup";
+
+  // ESC key dismissal for modal + drawer. The inline-popup overlay is owned by
+  // BnplFlow itself, which has its own dismissal handling.
   useEffect(() => {
-    if (position === "inline" || !open) return;
+    if (inlineLike || !open) return;
 
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose({ abandoned: true, phase: "amount" });
@@ -44,9 +47,9 @@ export function Widget({ options, open, onPhaseChange, onClose }: WidgetProps): 
 
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [position, open, onClose]);
+  }, [inlineLike, open, onClose]);
 
-  if (position === "inline") {
+  if (inlineLike) {
     return (
       <BnplFlow
         options={options}

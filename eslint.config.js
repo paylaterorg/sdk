@@ -34,6 +34,7 @@ export default tseslint.config(
         { prefer: "type-imports", fixStyle: "separate-type-imports" },
       ],
       "@typescript-eslint/no-explicit-any": "warn",
+      "@react-hooks/set-state-in-effect": "off",
     },
   },
 );

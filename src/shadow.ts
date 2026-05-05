@@ -119,10 +119,81 @@ export function applyTheme(shadow: ShadowRoot, theme: ThemeOptions = {}) {
  * @param {ColorMode} mode - The color mode to apply ("auto", "light", or "dark").
  */
 export function applyColorMode(host: HTMLElement, mode: ColorMode) {
-  if (mode === "auto") {
-    host.removeAttribute("data-paylater-mode");
+  // Tear down any previous auto-mode listeners on this host before reconfiguring.
+  const prevDispose = _autoDisposers.get(host);
+  if (prevDispose) {
+    prevDispose();
+    _autoDisposers.delete(host);
+  }
+
+  if (mode !== "auto") {
+    host.setAttribute("data-paylater-mode", mode);
     return;
   }
 
-  host.setAttribute("data-paylater-mode", mode);
+  // Auto mode resolves to the host page's effective color scheme so the widget
+  // matches the surrounding theme. We probe a few common signals on
+  // `<html>` (Tailwind's `.dark` class, `data-theme="dark"`, `data-mode="dark"`)
+  // and fall back to `prefers-color-scheme`. A MutationObserver + matchMedia
+  // listener keep the widget in sync when the host page toggles theme live.
+  const apply = () => host.setAttribute("data-paylater-mode", _detectHostMode());
+  apply();
+
+  const observer = new MutationObserver(apply);
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["class", "data-theme", "data-mode", "style"],
+  });
+
+  const mq = window.matchMedia?.("(prefers-color-scheme: dark)");
+  const onChange = () => apply();
+  mq?.addEventListener("change", onChange);
+
+  _autoDisposers.set(host, () => {
+    observer.disconnect();
+    mq?.removeEventListener("change", onChange);
+  });
+}
+
+/**
+ * @dev Per-host registry of teardown callbacks for auto-mode listeners. Indexed
+ * by host element so a single host that calls `applyColorMode` repeatedly
+ * (e.g. via `update({ theme })`) reuses one set of listeners instead of
+ * leaking them.
+ */
+const _autoDisposers = new WeakMap<HTMLElement, () => void>();
+
+/**
+ * @title _detectHostMode
+ * @description Resolve whether the host page is rendering in light or dark mode by probing common signals on `<html>`. Class-based theming wins (Tailwind's `.dark`/`.light`); then attribute-based theming (`data-theme`, `data-mode`); then the inline or computed `color-scheme`; with `prefers-color-scheme` as the last-resort OS fallback. Returning a concrete light/dark string lets the SDK reflect it as `data-paylater-mode` on the shadow host so its `:host([data-paylater-mode="dark"])` rules apply deterministically.
+ * @returns {"light" | "dark"} The resolved color scheme.
+ */
+function _detectHostMode(): "light" | "dark" {
+  if (typeof document === "undefined") return "light";
+  const root = document.documentElement;
+
+  // Class-based theming (Tailwind, shadcn, etc.) is the most explicit signal.
+  if (root.classList.contains("dark")) return "dark";
+  if (root.classList.contains("light")) return "light";
+
+  // Attribute-based theming.
+  const dt = root.getAttribute("data-theme");
+  if (dt === "dark") return "dark";
+  if (dt === "light") return "light";
+  const dm = root.getAttribute("data-mode");
+  if (dm === "dark") return "dark";
+  if (dm === "light") return "light";
+
+  // Inline `style="color-scheme: light"` or computed `color-scheme` is what
+  // many themers actually toggle. Hosts that have explicitly opted into a
+  // scheme this way win over the OS default.
+  const inlineScheme = root.style.colorScheme;
+  if (inlineScheme === "light") return "light";
+  if (inlineScheme === "dark") return "dark";
+  const computedScheme = window.getComputedStyle?.(root).colorScheme;
+  if (computedScheme === "light") return "light";
+  if (computedScheme === "dark") return "dark";
+
+  // Last resort: OS-level preference.
+  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }

@@ -37,7 +37,7 @@ const widget = PayLater.init({
     mode: "auto", // "light" | "dark" | "auto"
   },
 
-  position: "inline", // "inline" | "modal" | "drawer"
+  position: "inline", // "inline" | "inline-popup" | "modal" | "drawer"
   locale: "en-SE",
 
   on: {
@@ -136,7 +136,7 @@ Returns a `WidgetInstance`. Call `mount()` on the result.
 | `product`   | `"bnpl_30d"`                                                   | `"bnpl_30d"`               | Only one product variant for now                                                                                                       |
 | `asset`     | `"usdt"`                                                       | `"usdt"`                   | Only one asset variant for now                                                                                                         |
 | `theme`     | `ThemeOptions`                                                 | brand defaults             | See below                                                                                                                              |
-| `position`  | `"inline" \| "modal" \| "drawer"`                              | `"inline"`                 | Modal + drawer require explicit `widget.open()`                                                                                        |
+| `position`  | `"inline" \| "inline-popup" \| "modal" \| "drawer"`            | `"inline"`                 | Modal + drawer require explicit `widget.open()`                                                                                        |
 | `locale`    | BCP-47 string                                                  | auto-detected              | Falls back to country default                                                                                                          |
 | `country`   | `"SE" \| "NO" \| "FI" \| "DK" \| "DE" \| "FR" \| "NL" \| "GB"` | auto-detected              | Pre-select; user can change unless `lock` includes `"country"`                                                                         |
 | `amount`    | `number`                                                       | country min                | Pre-fill the amount slider in local currency                                                                                           |

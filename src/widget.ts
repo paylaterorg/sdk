@@ -68,7 +68,7 @@ export function createWidget(initialOptions: PayLaterOptions): WidgetInstance {
     reactRoot: null,
     phase: "amount",
     mounted: false,
-    open: (initialOptions.position ?? "inline") === "inline",
+    open: _isInlineLike(initialOptions.position ?? "inline"),
   };
 
   function render() {
@@ -114,7 +114,7 @@ export function createWidget(initialOptions: PayLaterOptions): WidgetInstance {
       state.container = container;
       state.reactRoot = createRoot(container);
       state.mounted = true;
-      state.open = state.options.position === "inline" ? true : false;
+      state.open = _isInlineLike(state.options.position);
 
       render();
 
@@ -143,13 +143,13 @@ export function createWidget(initialOptions: PayLaterOptions): WidgetInstance {
       state.open = false;
     },
     open() {
-      if (state.options.position === "inline") return;
+      if (_isInlineLike(state.options.position)) return;
       state.open = true;
 
       render();
     },
     close() {
-      if (state.options.position === "inline") return;
+      if (_isInlineLike(state.options.position)) return;
       state.open = false;
 
       render();
@@ -288,4 +288,14 @@ function _hasFieldValue(
     default:
       return false;
   }
+}
+
+/**
+ * @dev `inline` and `inline-popup` are both rendered immediately at the mount
+ * target — `state.open` is true by default and `open()` / `close()` are no-ops
+ * because there's no overlay shell to toggle. Modal and drawer positions are
+ * the opposite: hidden until the consumer calls `open()`.
+ */
+function _isInlineLike(position: PayLaterOptions["position"] | undefined): boolean {
+  return position === "inline" || position === "inline-popup" || position === undefined;
 }
