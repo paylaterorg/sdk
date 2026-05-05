@@ -1,5 +1,5 @@
 /**
- * @dev @paylaterorg/sdk/react — thin React wrapper around the vanilla SDK.
+ * @dev @paylater/sdk/react — thin React wrapper around the vanilla SDK.
  *
  * Drop `<PayLaterWidget>` into any React tree and the SDK handles its own
  * lifecycle. The component's props mirror the vanilla `PayLaterOptions`,

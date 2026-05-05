@@ -31,7 +31,7 @@ export default defineConfig({
   esbuildOptions(opts) {
     opts.jsx = "automatic";
     opts.banner = {
-      js: "/* @paylaterorg/sdk — frictionless USDT checkout. https://paylater.dev */",
+      js: "/* @paylater/sdk — frictionless USDT checkout. https://paylater.dev */",
     };
   },
 });

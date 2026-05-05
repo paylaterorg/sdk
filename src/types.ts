@@ -1,5 +1,5 @@
 /**
- * @dev Public type surface for @paylaterorg/sdk.
+ * @dev Public type surface for @paylater/sdk.
  *
  * Anything exported from this file is part of the SDK's public API and is
  * subject to semver. Internal types live next to their implementation.

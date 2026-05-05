@@ -1,7 +1,7 @@
 /**
  * React example — drop <PayLaterWidget /> into any tree.
  */
-import { PayLaterWidget } from "@paylaterorg/sdk/react";
+import { PayLaterWidget } from "@paylater/sdk/react";
 import { useState } from "react";
 
 export function CheckoutExample() {

@@ -1,5 +1,5 @@
 /* ---------------------------------------------------------------------------
- * @paylaterorg/sdk — Shadow-DOM-scoped stylesheet.
+ * @paylater/sdk — Shadow-DOM-scoped stylesheet.
  *
  * The whole sheet lives inside a Shadow Root, so every selector is implicitly
  * isolated from the host page. We use `:host` to declare themable CSS custom

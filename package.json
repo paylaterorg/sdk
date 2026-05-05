@@ -1,5 +1,5 @@
 {
-  "name": "@paylaterorg/sdk",
+  "name": "@paylater/sdk",
   "version": "0.1.0",
   "type": "module",
   "description": "Frictionless USDT checkout. Tap, sign, done. Pay within 30 days. Drop-in widget for partner platforms.",

@@ -1,5 +1,5 @@
 /**
- * @dev @paylaterorg/sdk — Frictionless USDT checkout for partner platforms.
+ * @dev @paylater/sdk — Frictionless USDT checkout for partner platforms.
  */
 
 import type { PayLaterOptions, PayLaterSDK, WidgetInstance } from "./types";

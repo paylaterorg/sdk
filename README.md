@@ -1,4 +1,4 @@
-# @paylaterorg/sdk
+# @paylater/sdk
 
 > Frictionless USDT checkout. Tap, sign, done. Pay within 30 days.
 
@@ -11,11 +11,11 @@ Drop-in widget that lets your customers buy USDT and settle the bill within 30 d
 ## Install
 
 ```bash
-npm install @paylaterorg/sdk
+npm install @paylater/sdk
 # or
-pnpm add @paylaterorg/sdk
+pnpm add @paylater/sdk
 # or
-yarn add @paylaterorg/sdk
+yarn add @paylater/sdk
 ```
 
 ## Quick start
@@ -23,7 +23,7 @@ yarn add @paylaterorg/sdk
 ### Vanilla JS / TypeScript
 
 ```ts
-import { PayLater } from "@paylaterorg/sdk";
+import { PayLater } from "@paylater/sdk";
 
 const widget = PayLater.init({
   apiKey: "pk_live_*",
@@ -52,7 +52,7 @@ widget.mount("#paylater");
 ### React
 
 ```tsx
-import { PayLaterWidget } from "@paylaterorg/sdk/react";
+import { PayLaterWidget } from "@paylater/sdk/react";
 
 export function Checkout() {
   return (
@@ -71,7 +71,7 @@ The React adapter wraps the vanilla SDK and handles its own lifecycle. Theme cha
 
 ```html
 <script type="module">
-  import { PayLater } from "https://esm.sh/@paylaterorg/sdk";
+  import { PayLater } from "https://esm.sh/@paylater/sdk";
   PayLater.init({ apiKey: "pk_test_*" }).mount("#paylater");
 </script>
 <div id="paylater"></div>
@@ -82,7 +82,7 @@ The React adapter wraps the vanilla SDK and handles its own lifecycle. Theme cha
 When the partner runs a custodial product — exchanges, gambling platforms, neobank wallets — the customer doesn't need to see USDT plumbing at all. The partner just credits the user's internal balance off-chain and flags the deposit as PayLater-funded, so withdrawals stay locked until the BNPL invoice settles within 30 days.
 
 ```ts
-import { PayLater } from "@paylaterorg/sdk";
+import { PayLater } from "@paylater/sdk";
 
 PayLater.init({
   apiKey: "pk_live_*",
