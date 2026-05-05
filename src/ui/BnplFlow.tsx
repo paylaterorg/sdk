@@ -5,7 +5,7 @@
 
 import { useEffect, useState, type JSX } from "react";
 import { COUNTRIES } from "../lib/countries";
-import { formatMoney, toUsdt } from "../lib/format";
+import { convertAmount, formatMoney, toUsdt } from "../lib/format";
 import { MOCK_ID_NUMBERS, MOCK_NAMES } from "../lib/mockEid";
 import { NETWORKS } from "../lib/networks";
 import { formatDate, generateReference, thirtyDaysFromNow } from "../lib/refs";
@@ -96,12 +96,6 @@ export function BnplFlow({
       Math.min(COUNTRIES[initialCountry].maxAmount, requested),
     );
   });
-
-  // Switching country resets the amount to the new market's minimum.
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setAmount(country.minAmount);
-  }, [country.minAmount, country.maxAmount]);
 
   const [network, setNetwork] = useState<Network>(options.prefill?.network ?? "solana");
   const [walletAddress, setWalletAddress] = useState<string>(options.prefill?.walletAddress ?? "");
@@ -522,6 +516,11 @@ export function BnplFlow({
         <CountryPicker
           current={countryCode}
           onPick={(code) => {
+            // Convert the slider's amount into the new market's currency at
+            // pick time so the user keeps roughly the same purchasing power
+            // when they swap markets mid-flow.
+            const next = COUNTRIES[code];
+            setAmount(convertAmount(country, next, amount));
             setCountryCode(code);
             setCountryPickerOpen(false);
           }}
