@@ -1,0 +1,28 @@
+# Dependencies
+node_modules
+package-lock.json
+
+# Build output
+dist
+.tsbuildinfo
+*.tgz
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.local
+
+# Editors
+.idea
+.vscode
+
+# OS
+.DS_Store
+
+# Testing
+coverage
+
+# AIs
+.omc/

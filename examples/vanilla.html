@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PayLater SDK — Vanilla example</title>
+    <style>
+      :root {
+        font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+      }
+      body {
+        margin: 0;
+        padding: 4rem 1.5rem;
+        background: #f4faec;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2rem;
+      }
+      h1 {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+      }
+      p {
+        color: #4a5a3e;
+        max-width: 32rem;
+        text-align: center;
+        line-height: 1.5;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>PayLater SDK — vanilla example</h1>
+    <p>
+      Renders the widget below using <code>PayLater.init()</code>. Open devtools to inspect the
+      shadow root attached to <code>#paylater</code>.
+    </p>
+
+    <div id="paylater"></div>
+
+    <script type="module">
+      // In production, swap to:
+      //   import { PayLater } from "@paylaterorg/sdk";
+      // For local development, build it (`npm run build`)
+      // and update the import path to "../dist/index.js".
+      import { PayLater } from "../dist/index.js";
+
+      PayLater.init({
+        apiKey: "pk_test_examplekey1234567890",
+        position: "inline",
+        country: "SE",
+        amount: 500,
+        theme: { primary: "#B2E67C", radius: "lg", mode: "auto" },
+        on: {
+          ready: () => console.log("widget mounted"),
+          success: (event) => console.log("signed", event),
+          error: (event) => console.error("error", event),
+          phaseChange: (phase) => console.log("phase", phase),
+        },
+      }).mount("#paylater");
+    </script>
+  </body>
+</html>
