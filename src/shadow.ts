@@ -71,11 +71,14 @@ export function attachShadowHost(host: HTMLElement): {
 
   // The container is where the widget content goes. We set `all: initial` to
   // reset all inherited styles so the widget looks the same regardless of the
-  // partner page's CSS. We do allow font-family and color to be inherited so
-  // basic theming can be done via CSS custom properties on the host.
+  // partner page's CSS, then re-establish the SDK's font/color tokens via
+  // CSS variables defined on `:host` — that way the body-attached portal
+  // shadow looks identical to the inline one even though its host element
+  // has `all: initial` and no useful inherited font.
   const container = document.createElement("div");
   container.setAttribute("data-paylater-root", "");
-  container.style.cssText = "all:initial;display:block;font-family:inherit;color:inherit;";
+  container.style.cssText =
+    "all:initial;display:block;font-family:var(--paylater-font-family);color:var(--paylater-fg);";
   shadow.appendChild(container);
 
   return { shadow, container };

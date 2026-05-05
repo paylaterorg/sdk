@@ -39,15 +39,36 @@ const DEFAULT_OPTIONS = {
   apiOrigin: "https://api.paylater.dev",
 };
 
+/**
+ * @dev Internal book-keeping for a single widget instance. The factory holds
+ * exactly one of these in closure scope and mutates it directly — every
+ * exposed method (mount / unmount / open / close / update) reads or writes
+ * a field here. Nullable references are populated on `mount` and reset to
+ * `null` on `unmount`, which lets `mounted` be a single source of truth.
+ */
 interface InternalState {
-  options: PayLaterOptions;
-  host: HTMLElement | null;
-  shadow: ShadowRoot | null;
-  container: HTMLDivElement | null;
-  reactRoot: Root | null;
-  phase: WidgetInstance["phase"];
-  mounted: boolean;
-  open: boolean;
+  options: PayLaterOptions; // The merged options driving this instance (defaults applied).
+  host: HTMLElement | null; // The consumer's mount target — where the inline shadow root attaches.
+  shadow: ShadowRoot | null; // Shadow root attached to the host. Carries the SDK CSS + theme.
+  container: HTMLDivElement | null; // `data-paylater-root` div inside `shadow`; the React tree's mount node.
+
+  /**
+   * @dev Body-attached host element for the popup overlay. Its own Shadow
+   * Root carries a copy of the SDK's CSS, so the overlay tile can render
+   * outside the consumer's mount target — escaping any `transform` /
+   * `filter` ancestors that would turn `position: fixed` into a
+   * containing-block-scoped position (which is how the popup sometimes
+   * appeared "at the widget's location" instead of centered on the
+   * viewport during early page-load clicks).
+   */
+  portalHost: HTMLElement | null;
+
+  portalShadow: ShadowRoot | null; // Shadow root inside `portalHost`. Mirrors `shadow`'s CSS + theme.
+  portalContainer: HTMLDivElement | null; // `data-paylater-root` div inside `portalShadow`; React's portal target.
+  reactRoot: Root | null; // The React 18 root rendering into `container`.
+  phase: WidgetInstance["phase"]; // Cached phase so `instance.phase` is a synchronous read.
+  mounted: boolean; // True between successful `mount()` and `unmount()`.
+  open: boolean; // For modal/drawer: whether the overlay is currently visible. Inline-like positions ignore it.
 }
 
 /**
@@ -65,6 +86,9 @@ export function createWidget(initialOptions: PayLaterOptions): WidgetInstance {
     host: null,
     shadow: null,
     container: null,
+    portalHost: null,
+    portalShadow: null,
+    portalContainer: null,
     reactRoot: null,
     phase: "amount",
     mounted: false,
@@ -78,6 +102,7 @@ export function createWidget(initialOptions: PayLaterOptions): WidgetInstance {
       createElement(Widget, {
         options: state.options,
         open: state.open,
+        portalContainer: state.portalContainer,
         onPhaseChange: (next) => {
           state.phase = next;
           state.options.on?.phaseChange?.(next);
@@ -108,10 +133,29 @@ export function createWidget(initialOptions: PayLaterOptions): WidgetInstance {
       applyTheme(shadow, state.options.theme);
       applyColorMode(shadow.host as HTMLElement, state.options.theme?.mode ?? "auto");
 
+      // Body-attached portal host. Its sole purpose is to anchor the popup
+      // overlay outside the consumer's mount target, escaping any
+      // `transform` / `filter` ancestors (think framer-motion `<motion.div>`
+      // wrappers) that would otherwise turn the overlay's `position: fixed`
+      // into a containing-block-scoped position. The portal carries its
+      // own copy of the SDK CSS + theme + color-mode so the rendered tile
+      // looks identical to the inline one.
+      const portalHost = document.createElement("div");
+      portalHost.setAttribute("data-paylater-portal", "");
+      portalHost.style.cssText = "all:initial;";
+      document.body.appendChild(portalHost);
+      const { shadow: portalShadow, container: portalContainer } = attachShadowHost(portalHost);
+      injectStyles(portalShadow, inlineCss);
+      applyTheme(portalShadow, state.options.theme);
+      applyColorMode(portalShadow.host as HTMLElement, state.options.theme?.mode ?? "auto");
+
       // Store all references in the internal state object, so we can clean them up on unmount.
       state.host = host;
       state.shadow = shadow;
       state.container = container;
+      state.portalHost = portalHost;
+      state.portalShadow = portalShadow;
+      state.portalContainer = portalContainer;
       state.reactRoot = createRoot(container);
       state.mounted = true;
       state.open = _isInlineLike(state.options.position);
@@ -135,10 +179,14 @@ export function createWidget(initialOptions: PayLaterOptions): WidgetInstance {
 
       // Clean up all references and DOM nodes to prevent memory leaks.
       if (state.host && state.shadow) state.shadow.innerHTML = "";
+      if (state.portalHost?.parentNode) state.portalHost.parentNode.removeChild(state.portalHost);
       state.reactRoot = null;
       state.container = null;
       state.shadow = null;
       state.host = null;
+      state.portalContainer = null;
+      state.portalShadow = null;
+      state.portalHost = null;
       state.mounted = false;
       state.open = false;
     },
@@ -162,9 +210,14 @@ export function createWidget(initialOptions: PayLaterOptions): WidgetInstance {
     update(patch) {
       state.options = _mergeDefaults({ ...state.options, ...patch });
 
-      if (state.shadow) {
-        if (patch.theme) applyTheme(state.shadow, state.options.theme);
-        if (patch.theme?.mode) applyColorMode(state.shadow.host as HTMLElement, patch.theme.mode);
+      // Mirror theme + mode updates onto both the inline and the portal
+      // shadow roots so they stay visually in lockstep.
+      const roots = [state.shadow, state.portalShadow];
+      for (const root of roots) {
+        if (!root) continue;
+
+        if (patch.theme) applyTheme(root, state.options.theme);
+        if (patch.theme?.mode) applyColorMode(root.host as HTMLElement, patch.theme.mode);
       }
 
       render();

@@ -30,6 +30,7 @@
 
 :host([data-paylater-mode="dark"]) {
   --paylater-primary: oklch(0.876 0.166 131);
+  --paylater-accent: oklch(0.4 0.12 131);
   --paylater-bg: oklch(0.18 0.04 131);
   --paylater-card: oklch(0.23 0.05 131);
   --paylater-input: oklch(0.28 0.05 131);
@@ -44,6 +45,7 @@
 @media (prefers-color-scheme: dark) {
   :host(:not([data-paylater-mode="light"])) {
     --paylater-primary: oklch(0.876 0.166 131);
+    --paylater-accent: oklch(0.4 0.12 131);
     --paylater-bg: oklch(0.18 0.04 131);
     --paylater-card: oklch(0.23 0.05 131);
     --paylater-input: oklch(0.28 0.05 131);
@@ -830,16 +832,11 @@
   line-height: 1.5;
 }
 
-/* QR + eID overlay (rendered inside .pl-tile-body) */
+/* QR + eID step (replaces the sign content while signPhase !== "idle"). */
 .pl-qr-shell {
-  position: absolute;
-  inset: 0;
-  background: var(--paylater-card);
   display: flex;
   flex-direction: column;
   gap: 0.875rem;
-  padding: 1.25rem;
-  z-index: 5;
   animation: pl-fade-in 180ms ease-out;
 }
 
@@ -859,6 +856,14 @@
   width: 100%;
   height: 100%;
   display: block;
+}
+
+.pl-qr-loading {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .pl-qr-overlay {

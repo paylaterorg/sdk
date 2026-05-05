@@ -4,20 +4,20 @@
  * scanned → signing → verified.
  */
 
-import { useEffect, useMemo, useState, type JSX } from "react";
+import QRCode from "qrcode";
+import { useEffect, useState, type JSX } from "react";
 import type { COUNTRIES } from "../../lib/countries";
-import { makeFakeQrSvg } from "../../lib/qr";
 import type { CountryCode } from "../../types";
 import type { SignPhase } from "../BnplFlow";
 import { CheckIcon, ScanIcon } from "../icons";
 
 /**
  * @title SignOverlay
- * @description Absolutely-positioned overlay rendered inside the tile body during the sign phase. Shows a deterministic fake QR with auto-advancing scan → scanned → signing → verified status messages, plus a per-country eID app hint and a 2-minute "QR expires in" timer for the initial scan state.
+ * @description Absolutely-positioned overlay rendered inside the tile body during the sign phase. Generates a real QR pointing at a synthetic Scrive session URL and overlays it with auto-advancing scan → scanned → signing → verified status messages, plus a per-country eID app hint and a 2-minute "QR expires in" timer for the initial scan state.
  * @param {Object} props
  * @param {SignPhase} props.phase - Sub-phase of the eID mock state machine.
  * @param {ReturnType<() => typeof COUNTRIES[CountryCode]>} props.country - Country config used to localize copy.
- * @param {string} props.reference - The session reference seeded into the fake QR pattern.
+ * @param {string} props.reference - The session reference, used as the QR payload seed.
  * @returns {JSX.Element} The overlay surface with QR + steps + timer.
  */
 export function SignOverlay({
@@ -29,8 +29,40 @@ export function SignOverlay({
   country: (typeof COUNTRIES)[CountryCode];
   reference: string;
 }): JSX.Element {
+  // Synthesize a Scrive-shaped session URL so the QR encodes something
+  // deterministic and recognizable. The session token is generated once at
+  // mount via lazy `useState` initialization — `Math.random()` in render
+  // would violate React's purity rules.
+  const [scriveUrl] = useState<string>(() => {
+    const sessionToken =
+      Math.random().toString(36).slice(2, 12) + Math.random().toString(36).slice(2, 12);
+    return `https://api.scrive.com/api/v2/sessions/${sessionToken}?ref=${reference}&eid=${encodeURIComponent(country.eid)}`;
+  });
+
+  const [qrDataUrl, setQrDataUrl] = useState<string>("");
   const [secondsLeft, setSecondsLeft] = useState(120);
 
+  // Generate the QR data URL once per reference. `toDataURL` is async, so we
+  // ignore stale resolutions if the component unmounts mid-flight.
+  useEffect(() => {
+    let cancelled = false;
+
+    QRCode.toDataURL(scriveUrl, {
+      width: 240,
+      margin: 1,
+      color: { dark: "#000000", light: "#ffffff" },
+    }).then((d) => {
+      if (!cancelled) setQrDataUrl(d);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [scriveUrl]);
+
+  // Tick the QR-expiry counter once per second, but only while the user is
+  // still on the scan sub-phase — the moment the mock advances we stop the
+  // interval to avoid wasted re-renders.
   useEffect(() => {
     if (phase !== "scan") return;
 
@@ -38,8 +70,6 @@ export function SignOverlay({
 
     return () => clearInterval(t);
   }, [phase]);
-
-  const qrSvg = useMemo(() => makeFakeQrSvg(reference), [reference]);
 
   const mins = Math.floor(secondsLeft / 60);
   const secs = secondsLeft % 60;
@@ -54,7 +84,13 @@ export function SignOverlay({
       </p>
 
       <div className="pl-qr-frame">
-        <span dangerouslySetInnerHTML={{ __html: qrSvg }} />
+        {qrDataUrl ? (
+          <img src={qrDataUrl} alt={`Scrive ${country.eid} QR`} />
+        ) : (
+          <div className="pl-qr-loading">
+            <span className="pl-spinner" />
+          </div>
+        )}
         {phase !== "scan" && (
           <div className="pl-qr-overlay">
             {phase === "scanned" && (

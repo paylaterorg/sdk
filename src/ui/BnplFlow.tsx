@@ -4,6 +4,7 @@
  */
 
 import { useEffect, useState, type JSX } from "react";
+import { createPortal } from "react-dom";
 import { COUNTRIES } from "../lib/countries";
 import { convertAmount, formatMoney, toUsdt } from "../lib/format";
 import { MOCK_ID_NUMBERS, MOCK_NAMES } from "../lib/mockEid";
@@ -56,6 +57,14 @@ export interface BnplFlowProps {
   onError: (event: ErrorEvent) => void; // Fired on unrecoverable failures.
 
   /**
+   * Body-attached shadow-root container the SDK created so the popup
+   * overlay can render outside the consumer's mount target — escaping any
+   * `transform` / `filter` ancestors that would otherwise turn its
+   * `position: fixed` into a containing-block-scoped position.
+   */
+  portalContainer?: HTMLElement | null;
+
+  /**
    * Provided by the Widget shell when this flow is rendered inside a
    * modal/drawer overlay. When present, the popup-after-amount behaviour is
    * suppressed (the shell is already an overlay).
@@ -74,6 +83,7 @@ export function BnplFlow({
   onPhaseChange,
   onSuccess,
   onDismiss,
+  portalContainer,
 }: BnplFlowProps): JSX.Element {
   const initialCountry: CountryCode = options.country ?? "SE";
   const merchantCustody = options.custody?.mode === "merchant";
@@ -398,7 +408,7 @@ export function BnplFlow({
           </div>
         )}
 
-        {phase === "sign" && (
+        {phase === "sign" && signPhase === "idle" && (
           <div data-pl-phase="sign" className="pl-stack" style={{ gap: "0.875rem" }}>
             <div className="pl-stack" style={{ gap: "0.25rem" }}>
               <h3 className="pl-h2">Sign with {country.eid}</h3>
@@ -439,11 +449,11 @@ export function BnplFlow({
                 Sign with {country.eid}
               </button>
             </div>
-
-            {signPhase !== "idle" && (
-              <SignOverlay phase={signPhase} country={country} reference={reference} />
-            )}
           </div>
+        )}
+
+        {phase === "sign" && signPhase !== "idle" && (
+          <SignOverlay phase={signPhase} country={country} reference={reference} />
         )}
 
         {phase === "done" && (
@@ -531,6 +541,35 @@ export function BnplFlow({
   );
 
   if (showAsOverlay) {
+    const overlay = (
+      <div
+        className="pl-overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-label="PayLater checkout"
+        // The class supplies the polish (backdrop blur, animation, theme
+        // tokens) but we duplicate the critical positioning + dimming as
+        // inline styles so the overlay is never visible as an inline-flow
+        // black box if the stylesheet is still parsing on the very first
+        // render after page load.
+        style={{
+          position: "fixed",
+          inset: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "1rem",
+          background: "rgba(0, 0, 0, 0.5)",
+          zIndex: 999999,
+        }}
+        onClick={(e) => {
+          if (e.target === e.currentTarget) reset();
+        }}
+      >
+        {tile}
+      </div>
+    );
+
     return (
       <>
         <div className="pl-tile pl-placeholder" aria-hidden>
@@ -545,17 +584,12 @@ export function BnplFlow({
           </div>
         </div>
 
-        <div
-          className="pl-overlay"
-          role="dialog"
-          aria-modal="true"
-          aria-label="PayLater checkout"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) reset();
-          }}
-        >
-          {tile}
-        </div>
+        {/* Portal into the body-attached shadow root when available so any
+            transformed ancestors of the consumer's mount target (e.g.
+            framer-motion <motion.div> wrappers) can't trap our position:fixed
+            overlay inside their containing block. Falls back to inline render
+            if the SDK didn't allocate a portal host. */}
+        {portalContainer ? createPortal(overlay, portalContainer) : overlay}
       </>
     );
   }
