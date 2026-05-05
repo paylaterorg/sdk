@@ -7,7 +7,7 @@
  * for everything else. No global resets bleed out, no host CSS bleeds in.
  * --------------------------------------------------------------------------- */
 :host {
-  --paylater-primary: oklch(0.876 0.166 131);
+  --paylater-primary: oklch(76.02% 0.18901 132.705);
   --paylater-primary-foreground: oklch(0.296 0.073 131);
   --paylater-accent: oklch(0.93 0.08 131);
   --paylater-radius: 0.75rem;
@@ -29,6 +29,7 @@
 }
 
 :host([data-paylater-mode="dark"]) {
+  --paylater-primary: oklch(0.876 0.166 131);
   --paylater-bg: oklch(0.18 0.04 131);
   --paylater-card: oklch(0.23 0.05 131);
   --paylater-input: oklch(0.28 0.05 131);
@@ -42,6 +43,7 @@
 
 @media (prefers-color-scheme: dark) {
   :host(:not([data-paylater-mode="light"])) {
+    --paylater-primary: oklch(0.876 0.166 131);
     --paylater-bg: oklch(0.18 0.04 131);
     --paylater-card: oklch(0.23 0.05 131);
     --paylater-input: oklch(0.28 0.05 131);
