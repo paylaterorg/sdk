@@ -11,7 +11,14 @@ import { MOCK_ID_NUMBERS, MOCK_NAMES } from "../lib/mockEid";
 import { NETWORKS } from "../lib/networks";
 import { formatDate, generateReference, thirtyDaysFromNow } from "../lib/refs";
 import { EMAIL_RE, isValidApiKey, validateAddress } from "../lib/validation";
-import type { CountryCode, ErrorEvent, Network, PayLaterOptions, SuccessEvent } from "../types";
+import type {
+  CountryCode,
+  Currency,
+  ErrorEvent,
+  Network,
+  PayLaterOptions,
+  SuccessEvent,
+} from "../types";
 import { CountryPicker, EidLogo, NetworkSelect, PhaseDots, SignOverlay } from "./components";
 import {
   ArrowLeftIcon,
@@ -24,6 +31,14 @@ import {
   PayLaterLogo,
   ShieldIcon,
 } from "./icons";
+
+const AMOUNT_PRESETS: Record<Currency, number[]> = {
+  SEK: [500, 1000, 2500, 5000],
+  NOK: [500, 1000, 2500, 5000],
+  DKK: [250, 500, 1500, 4000],
+  EUR: [50, 100, 250, 500],
+  GBP: [50, 100, 250, 500],
+};
 
 /**
  * @dev Top-level phase of the BNPL flow.
@@ -277,16 +292,9 @@ export function BnplFlow({
                 aria-label="Amount"
               />
               <div className="pl-presets" role="group" aria-label="Preset amounts">
-                {(() => {
-                  const { minAmount, maxAmount, step } = country;
-
-                  const range = maxAmount - minAmount;
-                  const raw = [0.2, 0.4, 0.65, 1].map(
-                    (f) => Math.round((minAmount + range * f) / step) * step,
-                  );
-                  const presets = [...new Set(raw)].filter((v) => v >= minAmount && v <= maxAmount);
-
-                  return presets.map((preset) => (
+                {AMOUNT_PRESETS[country.currency]
+                  .filter((p) => p >= country.minAmount && p <= country.maxAmount)
+                  .map((preset) => (
                     <button
                       key={preset}
                       type="button"
@@ -295,8 +303,7 @@ export function BnplFlow({
                     >
                       {formatMoney(country, preset)}
                     </button>
-                  ));
-                })()}
+                  ))}
               </div>
             </div>
 
