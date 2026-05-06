@@ -86,6 +86,12 @@ export function BnplFlow({
   const showEmailField = !hide.has("email");
   const countryEditable = !lock.has("country");
 
+  // Lock support for the form fields. `lock` keeps the field visible but
+  // read-only (vs `hide`, which removes it entirely).
+  const emailLocked = lock.has("email");
+  const walletLocked = lock.has("walletAddress");
+  const networkLocked = lock.has("network");
+
   const [phase, setPhaseInternal] = useState<Phase>("amount");
   const [countryCode, setCountryCode] = useState<CountryCode>(initialCountry);
   const country = COUNTRIES[countryCode];
@@ -299,7 +305,7 @@ export function BnplFlow({
                 <label className="pl-label" htmlFor="pl-network">
                   Network
                 </label>
-                <NetworkSelect value={network} onChange={setNetwork} />
+                <NetworkSelect value={network} onChange={setNetwork} disabled={networkLocked} />
               </div>
             )}
 
@@ -322,6 +328,7 @@ export function BnplFlow({
                   value={walletAddress}
                   onChange={(e) => setWalletAddress(e.target.value)}
                   aria-invalid={addrTouched && !addrValid}
+                  readOnly={walletLocked}
                   spellCheck={false}
                   autoCorrect="off"
                   autoCapitalize="off"
@@ -350,6 +357,7 @@ export function BnplFlow({
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  readOnly={emailLocked}
                   autoComplete="email"
                   inputMode="email"
                 />

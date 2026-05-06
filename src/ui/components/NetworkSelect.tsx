@@ -15,18 +15,21 @@ import { ChainLogo } from "./ChainLogo";
 
 /**
  * @title NetworkSelect
- * @description Custom dropdown for picking a settlement network. Native `<select>` can't render arbitrary JSX inside its options, so this builds a controlled trigger + listbox that shows each chain's branded logo, label, and ticker. Click-outside and Escape both dismiss the menu.
+ * @description Custom dropdown for picking a settlement network. Native `<select>` can't render arbitrary JSX inside its options, so this builds a controlled trigger + listbox that shows each chain's branded logo, label, and ticker. Click-outside and Escape both dismiss the menu. When `disabled` is set (the partner locked `network`), the trigger renders as a non-interactive read-only chip — the menu can't open.
  * @param {Object} props
  * @param {Network} props.value - The currently selected network id.
  * @param {(next: Network) => void} props.onChange - Called with the new network id when the user picks an option.
+ * @param {boolean} [props.disabled] - When true, the trigger is non-interactive and the chevron is hidden.
  * @returns {JSX.Element} The trigger button, plus the listbox when open.
  */
 export function NetworkSelect({
   value,
   onChange,
+  disabled = false,
 }: {
   value: Network;
   onChange: (next: Network) => void;
+  disabled?: boolean;
 }): JSX.Element {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -61,14 +64,15 @@ export function NetworkSelect({
       <button
         type="button"
         className="pl-network-trigger"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => !disabled && setOpen((v) => !v)}
+        disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={open}
       >
         <ChainLogo chain={selected.id} size={20} />
         <span className="pl-network-label">{selected.label}</span>
         <span className="pl-network-ticker">{selected.ticker}</span>
-        <ChevronDownIcon />
+        {!disabled && <ChevronDownIcon />}
       </button>
       {open && (
         <ul className="pl-network-menu" role="listbox">
