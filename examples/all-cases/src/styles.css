@@ -415,8 +415,9 @@ p {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  width: 100%;
-  align-items: center;
+  width: 22rem;
+  max-width: 100%;
+  align-items: stretch;
 }
 
 /* Live-update demo — three brand-color buttons stacked above the widget. */
@@ -424,12 +425,14 @@ p {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  width: 100%;
-  align-items: center;
+  width: 22rem;
+  max-width: 100%;
+  align-items: stretch;
 }
 
 .scheme-row {
   display: inline-flex;
+  align-self: center;
   gap: 0.375rem;
   border: 1px solid var(--border);
   border-radius: 9999px;
