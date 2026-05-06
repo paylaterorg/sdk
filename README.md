@@ -122,14 +122,16 @@ PayLater.init({
   },
 
   on: {
-    success: ({ ref, amount, merchantUserId }) => {
-      // Credit the user internally + flag the deposit as PayLater-funded
-      // so withdrawals stay locked until the BNPL agreement settles.
-      yourBackend.creditUser(merchantUserId, amount, { paylaterRef: ref });
+    success: ({ ref, merchantUserId }) => {
+      // Use `success` for UX only — show the customer a confirmation state,
+      // emit analytics, optimistically refresh their balance display.
+      track("paylater.signed", { ref, userId: merchantUserId });
     },
   },
 }).mount("#paylater");
 ```
+
+> **Authoritative settlement runs server-side.** The publishable key (`pk_*`) above is safe to ship in the browser — it can't move money. When the customer signs, PayLater posts the signed credit agreement to your webhook endpoint, signed with your secret key (`sk_*`). That webhook is what actually credits the user's balance and flags the deposit as PayLater-funded. Treat the client-side `success` event as a UX cue, not as authorization.
 
 Prefer to receive USDT on-chain into your hot wallet instead of crediting off-chain? Pass `settlementAddress` + `settlementNetwork` together — the end-user UX is identical, only PayLater's settlement path changes.
 
@@ -295,8 +297,13 @@ npm run build
 # Then boot the showcase
 cd examples/all-cases
 npm install
+cp .env.example .env       # plug in your sandbox key — see "API key" below
 npm run dev
 ```
+
+#### API key
+
+The showcase reads its sandbox key from `VITE_PAYLATER_API_KEY` in `examples/all-cases/.env`. The `.env.example` file ships with a placeholder — replace it with your own `pk_test_*` key (issued from [paylater.dev](https://paylater.dev)) to clear the widget's "Provide a valid `pk_test_*` API key" warning. Without a `.env`, the showcase falls back to a placeholder so the layout still renders, but the Continue button stays disabled with the warning shown.
 
 Vite serves it on `http://localhost:5174`. Toggle the host-page theme at the top of the page to see every widget set to `mode: "auto"` flip in lockstep.
 

@@ -11,7 +11,15 @@
 import { PayLaterWidget } from "@paylater/sdk/react";
 import { useState, type ReactNode } from "react";
 
-const TEST_KEY = "pk_test_demo";
+/**
+ * @dev Sandbox key used for every showcased widget. Pulled from
+ * `VITE_PAYLATER_API_KEY` (set in `.env` — see `.env.example`) so partners
+ * can plug in their own key without editing source. Falls back to a
+ * placeholder so the showcase still renders out of the box, though the
+ * widget will show its "Provide a valid pk_test_* key" warning until a
+ * real key is supplied.
+ */
+const TEST_KEY: string = import.meta.env.VITE_PAYLATER_API_KEY ?? "pk_test_examplekey1234567890";
 
 /**
  * @dev Shape of one showcased configuration scenario.
@@ -34,7 +42,7 @@ export const CASES: Case[] = [
     title: "Default settings",
     description:
       "The smallest valid call. Just an API key — every other option uses the SDK's defaults: inline position, auto theme, self custody, country auto-detected (Sweden in this demo).",
-    code: `<PayLaterWidget apiKey="pk_test_demo" />`,
+    code: `<PayLaterWidget apiKey="pk_test_examplekey1234567890" />`,
     Demo: () => <PayLaterWidget apiKey={TEST_KEY} />,
   },
   {
@@ -43,7 +51,7 @@ export const CASES: Case[] = [
     description:
       "Amount step renders inline at the mount point. When the customer clicks Continue, the rest of the flow takes over the viewport as an overlay. The host page gets a 'Continuing in popup' placeholder where the inline tile was. Used by the marketing site.",
     code: `<PayLaterWidget
-  apiKey="pk_test_demo"
+  apiKey="pk_test_examplekey1234567890"
   position="inline-popup"
 />`,
     Demo: () => <PayLaterWidget apiKey={TEST_KEY} position="inline-popup" />,
@@ -54,7 +62,7 @@ export const CASES: Case[] = [
     description:
       "Skip the auto-detected country and start the customer in a specific market. They can still change it via the chip in the header unless you also lock it.",
     code: `<PayLaterWidget
-  apiKey="pk_test_demo"
+  apiKey="pk_test_examplekey1234567890"
   country="FR"
 />`,
     Demo: () => <PayLaterWidget apiKey={TEST_KEY} country="FR" />,
@@ -65,7 +73,7 @@ export const CASES: Case[] = [
     description:
       "Country chip becomes inert (no chevron, not clickable). Required when your business model is single-market.",
     code: `<PayLaterWidget
-  apiKey="pk_test_demo"
+  apiKey="pk_test_examplekey1234567890"
   country="DE"
   lock={["country"]}
 />`,
@@ -77,7 +85,7 @@ export const CASES: Case[] = [
     description:
       "Drop the customer onto the amount step at a specific value. The value is clamped into the country's [min, max] range automatically.",
     code: `<PayLaterWidget
-  apiKey="pk_test_demo"
+  apiKey="pk_test_examplekey1234567890"
   country="SE"
   amount={2500}
 />`,
@@ -89,7 +97,7 @@ export const CASES: Case[] = [
     description:
       "Customer is already logged in to your platform — pass their email and lock the field so they can't change it.",
     code: `<PayLaterWidget
-  apiKey="pk_test_demo"
+  apiKey="pk_test_examplekey1234567890"
   prefill={{ email: "customer@yourplatform.com" }}
   lock={["email"]}
 />`,
@@ -107,7 +115,7 @@ export const CASES: Case[] = [
     description:
       "Same as locked, except the field is removed from the UI entirely. Hidden fields still need a prefill source — the SDK throws at init if a hidden field has no value.",
     code: `<PayLaterWidget
-  apiKey="pk_test_demo"
+  apiKey="pk_test_examplekey1234567890"
   prefill={{ email: "customer@yourplatform.com" }}
   hide={["email"]}
 />`,
@@ -125,7 +133,7 @@ export const CASES: Case[] = [
     description:
       "Already know where the customer wants their USDT? Skip the network/address inputs by prefilling them and locking both fields.",
     code: `<PayLaterWidget
-  apiKey="pk_test_demo"
+  apiKey="pk_test_examplekey1234567890"
   prefill={{
     network: "solana",
     walletAddress: "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
@@ -147,9 +155,9 @@ export const CASES: Case[] = [
     id: "merchant-offchain",
     title: "Merchant custody — off-chain (default)",
     description:
-      "Partner runs a custodial product (exchange / wallet / gambling site). The wallet step is hidden — PayLater fires `success` and the partner credits the user's internal balance.",
+      "Partner runs a custodial product (exchange / wallet / gambling site). The wallet step is hidden — PayLater fires `success` so the partner page can show a confirmation state. The actual ledger update happens server-side from the signed webhook (the publishable key alone never authorizes money movement).",
     code: `<PayLaterWidget
-  apiKey="pk_test_demo"
+  apiKey="pk_test_examplekey1234567890"
   prefill={{ email: "customer@yourplatform.com" }}
   lock={["email"]}
   custody={{
@@ -157,8 +165,11 @@ export const CASES: Case[] = [
     merchantUserId: "usr_4029381",
     description: "Deposit to your account",
   }}
-  onSuccess={({ ref, amount, merchantUserId }) => {
-    yourBackend.creditUser(merchantUserId, amount, { paylaterRef: ref });
+  // Use \`success\` for UX (toast, redirect, optimistic balance ping) — the
+  // authoritative credit happens when PayLater POSTs the signed agreement
+  // to your webhook endpoint, verified with your secret key (\`sk_*\`).
+  onSuccess={({ ref, merchantUserId }) => {
+    track("paylater.signed", { ref, userId: merchantUserId });
   }}
 />`,
     Demo: () => (
@@ -180,7 +191,7 @@ export const CASES: Case[] = [
     description:
       "Same UX as off-chain merchant custody, but PayLater settles the USDT on-chain into the partner's hot wallet rather than crediting off-chain.",
     code: `<PayLaterWidget
-  apiKey="pk_test_demo"
+  apiKey="pk_test_examplekey1234567890"
   custody={{
     mode: "merchant",
     merchantUserId: "usr_4029381",
@@ -206,7 +217,7 @@ export const CASES: Case[] = [
     description:
       "Override `theme.light` and `theme.dark` to match your brand. Toggle the host theme at the top of the page to see both schemes live.",
     code: `<PayLaterWidget
-  apiKey="pk_test_demo"
+  apiKey="pk_test_examplekey1234567890"
   theme={{
     radius: "lg",
     mode: "auto",
@@ -232,7 +243,7 @@ export const CASES: Case[] = [
     description:
       "Pin the widget to light mode regardless of host page theme. Useful when the partner page is dark but checkout needs to feel like a clean light surface (e.g. legal disclosures).",
     code: `<PayLaterWidget
-  apiKey="pk_test_demo"
+  apiKey="pk_test_examplekey1234567890"
   theme={{ mode: "light" }}
 />`,
     Demo: () => <PayLaterWidget apiKey={TEST_KEY} theme={{ mode: "light" }} />,
@@ -242,7 +253,7 @@ export const CASES: Case[] = [
     title: 'Forced dark mode (`mode: "dark"`)',
     description: "Mirror of forced-light — pin to dark regardless of host page theme.",
     code: `<PayLaterWidget
-  apiKey="pk_test_demo"
+  apiKey="pk_test_examplekey1234567890"
   theme={{ mode: "dark" }}
 />`,
     Demo: () => <PayLaterWidget apiKey={TEST_KEY} theme={{ mode: "dark" }} />,
@@ -253,7 +264,7 @@ export const CASES: Case[] = [
     description:
       "Bump the corner radius across cards / buttons / inputs. The full scale is `none | sm | md | lg | xl`.",
     code: `<PayLaterWidget
-  apiKey="pk_test_demo"
+  apiKey="pk_test_examplekey1234567890"
   theme={{ radius: "xl" }}
 />`,
     Demo: () => <PayLaterWidget apiKey={TEST_KEY} theme={{ radius: "xl" }} />,
@@ -263,7 +274,7 @@ export const CASES: Case[] = [
     title: "Squared radius (`none`)",
     description: "Goes the other way — flat, hard-edged surface for brutalist brands.",
     code: `<PayLaterWidget
-  apiKey="pk_test_demo"
+  apiKey="pk_test_examplekey1234567890"
   theme={{ radius: "none" }}
 />`,
     Demo: () => <PayLaterWidget apiKey={TEST_KEY} theme={{ radius: "none" }} />,
@@ -274,7 +285,7 @@ export const CASES: Case[] = [
     description:
       "Override the system font stack. Pass any CSS font-family value — the widget renders inside Shadow DOM, so the host page must serve the font (or use a system font like `Georgia`).",
     code: `<PayLaterWidget
-  apiKey="pk_test_demo"
+  apiKey="pk_test_examplekey1234567890"
   theme={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
 />`,
     Demo: () => (
@@ -290,7 +301,7 @@ export const CASES: Case[] = [
     description:
       "Wire up partner-side analytics + ledger updates. The success event includes the BNPL reference, settled USDT amount, repayment amount, recipient, custody mode, and (for merchant custody) `merchantUserId`.",
     code: `<PayLaterWidget
-  apiKey="pk_test_demo"
+  apiKey="pk_test_examplekey1234567890"
   onSuccess={(event) => track("paylater.signed", event)}
   onError={(error) => console.error("[paylater]", error)}
   onPhaseChange={(phase) => console.log("phase →", phase)}
