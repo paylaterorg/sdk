@@ -179,6 +179,32 @@ export function BnplFlow({
 
   const usdt = toUsdt(country, amount);
   const amountValid = amount >= country.minAmount && amount <= country.maxAmount;
+
+  // Locale-correct currency symbol + position so the inline editable amount
+  // can render "€500" or "500 kr" depending on market without us hard-coding
+  // a per-country lookup table.
+  const { amountSymbol, amountSymbolFirst } = useMemo(() => {
+    const parts = new Intl.NumberFormat(country.locale, {
+      style: "currency",
+      currency: country.currency,
+      maximumFractionDigits: 0,
+    }).formatToParts(1234);
+
+    const symbolIdx = parts.findIndex((p) => p.type === "currency");
+    const numIdx = parts.findIndex((p) => p.type === "integer");
+
+    return {
+      amountSymbol: parts[symbolIdx]?.value ?? country.currency,
+      amountSymbolFirst: symbolIdx >= 0 && numIdx >= 0 && symbolIdx < numIdx,
+    };
+  }, [country.locale, country.currency]);
+
+  // Slider gradient fill — clamp so a typed out-of-range value (below min, or
+  // mid-typing partial number) doesn't push --sl-pct negative or past 100%.
+  const sliderPct = Math.max(
+    0,
+    Math.min(100, ((amount - country.minAmount) / (country.maxAmount - country.minAmount)) * 100),
+  );
   const addrTouched = walletAddress.trim().length > 0;
   const addrValid = validateAddress(network, walletAddress);
   const emailValid = EMAIL_RE.test(email.trim());
@@ -324,7 +350,48 @@ export function BnplFlow({
             <div className="pl-amount-card">
               <div className="pl-row">
                 <span className="pl-eyebrow">You pay later</span>
-                <span className="pl-amount">{formatMoney(country, amount)}</span>
+                <label className="pl-amount">
+                  {amountSymbolFirst && (
+                    <span className="pl-amount-symbol" aria-hidden>
+                      {amountSymbol}
+                    </span>
+                  )}
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    className="pl-amount-input"
+                    value={amount === 0 ? "" : String(amount)}
+                    placeholder="0"
+                    maxLength={7}
+                    onFocus={(e) => e.currentTarget.select()}
+                    onChange={(e) => {
+                      // Strip everything that isn't a digit — no decimals, no
+                      // separators. Lets the partner's customer type a custom
+                      // amount that doesn't snap to country.step (e.g. 51 EUR).
+                      const digits = e.target.value.replace(/\D/g, "").slice(0, 7);
+
+                      setAmount(digits === "" ? 0 : Number(digits));
+                    }}
+                    onBlur={() => {
+                      if (amount > 0 && amount < country.minAmount) setAmount(country.minAmount);
+                      else if (amount === 0) setAmount(country.minAmount);
+                      else if (amount > country.maxAmount) setAmount(country.maxAmount);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") e.currentTarget.blur();
+                    }}
+                    style={{
+                      width: `${Math.max(2, String(amount === 0 ? country.minAmount : amount).length)}ch`,
+                    }}
+                    aria-label="Custom amount"
+                  />
+                  {!amountSymbolFirst && (
+                    <span className="pl-amount-symbol" aria-hidden>
+                      {amountSymbol}
+                    </span>
+                  )}
+                </label>
               </div>
               <input
                 type="range"
@@ -332,9 +399,9 @@ export function BnplFlow({
                 min={country.minAmount}
                 max={country.maxAmount}
                 step={country.step}
-                value={amount}
+                value={Math.max(country.minAmount, Math.min(country.maxAmount, amount))}
                 style={{
-                  ["--sl-pct" as string]: `${((amount - country.minAmount) / (country.maxAmount - country.minAmount)) * 100}%`,
+                  ["--sl-pct" as string]: `${sliderPct}%`,
                 }}
                 onChange={(e) => {
                   const next = Number(e.target.value);

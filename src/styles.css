@@ -327,11 +327,66 @@
 }
 
 .pl-amount {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.15rem;
+  padding: 0.1875rem 0.5rem;
+  margin: -0.1875rem -0.5rem;
+  border-radius: 0.5rem;
   font-size: 1.5rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   color: var(--paylater-primary);
   letter-spacing: -0.01em;
+  cursor: text;
+  transition:
+    background-color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.pl-amount:hover {
+  background: color-mix(in oklch, var(--paylater-primary) 7%, transparent);
+}
+
+.pl-amount:focus-within {
+  background: color-mix(in oklch, var(--paylater-primary) 12%, transparent);
+  box-shadow:
+    0 0 0 1.5px var(--paylater-primary),
+    0 0 0 5px color-mix(in oklch, var(--paylater-primary) 18%, transparent);
+}
+
+.pl-amount-symbol {
+  font-size: 0.8em;
+  font-weight: 700;
+  opacity: 0.7;
+  user-select: none;
+}
+
+.pl-amount-input {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  text-align: right;
+  outline: none;
+  font-variant-numeric: tabular-nums;
+  caret-color: var(--paylater-primary);
+  cursor: text;
+  min-width: 1ch;
+}
+
+.pl-amount-input::placeholder {
+  color: color-mix(in oklch, var(--paylater-primary) 40%, transparent);
+}
+
+.pl-amount-input::-webkit-outer-spin-button,
+.pl-amount-input::-webkit-inner-spin-button {
+  appearance: none;
+  margin: 0;
 }
 
 .pl-amount-large {
