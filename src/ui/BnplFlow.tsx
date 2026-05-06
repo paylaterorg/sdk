@@ -10,6 +10,14 @@ import { convertAmount, formatMoney, toUsdt } from "../lib/format";
 import { MOCK_ID_NUMBERS, MOCK_NAMES } from "../lib/mockEid";
 import { NETWORKS } from "../lib/networks";
 import { formatDate, generateReference, thirtyDaysFromNow } from "../lib/refs";
+import {
+  playClose,
+  playPreset,
+  playScanned,
+  playSliderTick,
+  playSnap,
+  playSuccess,
+} from "../lib/sfx";
 import { EMAIL_RE, isValidApiKey, validateAddress } from "../lib/validation";
 import type {
   CountryCode,
@@ -180,7 +188,10 @@ export function BnplFlow({
     };
 
     if (signPhase === "scan") return wait(2200, () => setSignPhase("scanned"));
-    if (signPhase === "scanned") return wait(1100, () => setSignPhase("signing"));
+    if (signPhase === "scanned") {
+      playScanned();
+      return wait(1100, () => setSignPhase("signing"));
+    }
     if (signPhase === "signing") return wait(1600, () => setSignPhase("verified"));
     if (signPhase === "verified")
       return wait(900, () => {
@@ -210,6 +221,7 @@ export function BnplFlow({
 
         setSignPhase("idle");
         setPhase("done");
+        playSuccess();
         onSuccess(event);
       });
   }, [signPhase]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -259,7 +271,15 @@ export function BnplFlow({
             {countryUnlocked && <ChevronDownIcon />}
           </button>
           {showAsOverlay && (
-            <button type="button" className="pl-close" onClick={reset} aria-label="Close PayLater">
+            <button
+              type="button"
+              className="pl-close"
+              onClick={() => {
+                playClose();
+                reset();
+              }}
+              aria-label="Close PayLater"
+            >
               <CloseIcon />
             </button>
           )}
@@ -288,7 +308,18 @@ export function BnplFlow({
                 max={country.maxAmount}
                 step={country.step}
                 value={amount}
-                onChange={(e) => setAmount(Number(e.target.value))}
+                style={{
+                  ["--sl-pct" as string]: `${((amount - country.minAmount) / (country.maxAmount - country.minAmount)) * 100}%`,
+                }}
+                onChange={(e) => {
+                  const next = Number(e.target.value);
+                  if (next !== amount) {
+                    const t = (next - country.minAmount) / (country.maxAmount - country.minAmount);
+                    playSliderTick(t);
+                  }
+
+                  setAmount(next);
+                }}
                 aria-label="Amount"
               />
               <div className="pl-presets" role="group" aria-label="Preset amounts">
@@ -299,7 +330,10 @@ export function BnplFlow({
                       key={preset}
                       type="button"
                       className={`pl-preset-btn${amount === preset ? " pl-preset-btn--active" : ""}`}
-                      onClick={() => setAmount(preset)}
+                      onClick={() => {
+                        playPreset();
+                        setAmount(preset);
+                      }}
                     >
                       {formatMoney(country, preset)}
                     </button>
@@ -314,7 +348,10 @@ export function BnplFlow({
             <button
               type="button"
               className="pl-btn pl-btn-primary"
-              onClick={() => setPhase("delivery")}
+              onClick={() => {
+                playSnap();
+                setPhase("delivery");
+              }}
               disabled={!apiKeyValid || !amountValid}
             >
               Continue
@@ -419,7 +456,10 @@ export function BnplFlow({
               <button
                 type="button"
                 className="pl-btn pl-btn-ghost"
-                onClick={() => setPhase("amount")}
+                onClick={() => {
+                  playClose();
+                  setPhase("amount");
+                }}
               >
                 <ArrowLeftIcon />
                 Back
@@ -427,7 +467,10 @@ export function BnplFlow({
               <button
                 type="button"
                 className="pl-btn pl-btn-primary"
-                onClick={() => setPhase("sign")}
+                onClick={() => {
+                  playSnap();
+                  setPhase("sign");
+                }}
                 disabled={!deliveryValid}
               >
                 Continue
@@ -464,7 +507,10 @@ export function BnplFlow({
               <button
                 type="button"
                 className="pl-btn pl-btn-ghost"
-                onClick={() => setPhase("delivery")}
+                onClick={() => {
+                  playClose();
+                  setPhase("delivery");
+                }}
               >
                 <ArrowLeftIcon />
                 Back
@@ -472,7 +518,10 @@ export function BnplFlow({
               <button
                 type="button"
                 className="pl-btn pl-btn-primary"
-                onClick={() => setSignPhase("scan")}
+                onClick={() => {
+                  playSnap();
+                  setSignPhase("scan");
+                }}
               >
                 <EidLogo country={countryCode} size={16} />
                 Sign with {country.eid}
@@ -536,11 +585,25 @@ export function BnplFlow({
             </div>
 
             <div className="pl-btn-row" style={{ justifyContent: "center" }}>
-              <button type="button" className="pl-btn pl-btn-ghost" onClick={copyReference}>
+              <button
+                type="button"
+                className="pl-btn pl-btn-ghost"
+                onClick={() => {
+                  playSnap();
+                  copyReference();
+                }}
+              >
                 {copied ? <CheckIcon /> : <CopyIcon />}
                 {copied ? "Copied" : "Copy reference"}
               </button>
-              <button type="button" className="pl-btn pl-btn-ghost" onClick={reset}>
+              <button
+                type="button"
+                className="pl-btn pl-btn-ghost"
+                onClick={() => {
+                  playSnap();
+                  reset();
+                }}
+              >
                 Run again
               </button>
             </div>

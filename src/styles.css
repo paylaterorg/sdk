@@ -685,7 +685,11 @@
   appearance: none;
   height: 0.5rem;
   border-radius: 9999px;
-  background: color-mix(in oklch, var(--paylater-fg) 8%, transparent);
+  background: linear-gradient(
+    to right,
+    var(--paylater-primary) var(--sl-pct, 0%),
+    color-mix(in oklch, var(--paylater-fg) 8%, transparent) var(--sl-pct, 0%)
+  );
   cursor: pointer;
   outline: none;
 }
