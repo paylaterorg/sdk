@@ -30,9 +30,16 @@ const widget = PayLater.init({
   product: "bnpl_30d",
   asset: "usdt",
 
-  // Theme — every value optional
+  // Theme — every value optional. Brand colors live under `light` / `dark`.
   theme: {
-    primary: "#B2E67C",
+    light: {
+      primary: "oklch(76.02% 0.18901 132.705)",
+      accent: "oklch(0.93 0.08 131)",
+    },
+    dark: {
+      primary: "oklch(0.876 0.166 131)",
+      accent: "oklch(0.4 0.12 131)",
+    },
     radius: "lg",
     mode: "auto", // "light" | "dark" | "auto"
   },
@@ -58,7 +65,18 @@ export function Checkout() {
   return (
     <PayLaterWidget
       apiKey="pk_live_*"
-      theme={{ primary: "#B2E67C", radius: "lg", mode: "auto" }}
+      theme={{
+        light: {
+          primary: "oklch(76.02% 0.18901 132.705)",
+          accent: "oklch(0.93 0.08 131)",
+        },
+        dark: {
+          primary: "oklch(0.876 0.166 131)",
+          accent: "oklch(0.4 0.12 131)",
+        },
+        radius: "lg",
+        mode: "auto",
+      }}
       onSuccess={({ ref }) => console.log("signed", ref)}
     />
   );
@@ -136,7 +154,7 @@ Returns a `WidgetInstance`. Call `mount()` on the result.
 | `product`   | `"bnpl_30d"`                                                   | `"bnpl_30d"`               | Only one product variant for now                                                                                                       |
 | `asset`     | `"usdt"`                                                       | `"usdt"`                   | Only one asset variant for now                                                                                                         |
 | `theme`     | `ThemeOptions`                                                 | brand defaults             | See below                                                                                                                              |
-| `position`  | `"inline" \| "inline-popup" \| "modal" \| "drawer"`            | `"inline"`                 | Modal + drawer require explicit `widget.open()`                                                                                        |
+| `position`  | `"inline" \| "inline-popup" \| "modal" \| "drawer"`            | `"inline"`                 | See "Position modes" below. Modal + drawer require explicit `widget.open()`                                                            |
 | `locale`    | BCP-47 string                                                  | auto-detected              | Falls back to country default                                                                                                          |
 | `country`   | `"SE" \| "NO" \| "FI" \| "DK" \| "DE" \| "FR" \| "NL" \| "GB"` | auto-detected              | Pre-select; user can change unless `lock` includes `"country"`                                                                         |
 | `amount`    | `number`                                                       | country min                | Pre-fill the amount slider in local currency                                                                                           |
@@ -146,6 +164,17 @@ Returns a `WidgetInstance`. Call `mount()` on the result.
 | `custody`   | `CustodyOptions`                                               | `{ mode: "self" }`         | `"self"` ships USDT on-chain to user wallet; `"merchant"` lets the partner credit the user's balance internally (off-chain by default) |
 | `on`        | `EventHandlers`                                                | —                          | See below                                                                                                                              |
 | `apiOrigin` | `string`                                                       | `https://api.paylater.dev` | QA-environment override                                                                                                                |
+
+### Position modes
+
+How the widget renders relative to its mount target.
+
+| Position         | Behavior                                                                                                                                                                                                  |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `"inline"`       | Entire flow stays in one tile at the mount target. Every phase (amount → delivery → sign → done) renders in the same card. No page-level overlay. Use this for dedicated checkout pages.                  |
+| `"inline-popup"` | Amount step renders inline at the mount target. When the customer clicks Continue, the rest of the flow pops up as a viewport-centered overlay. Best for landing pages where the inline tile is a teaser. |
+| `"modal"`        | Entire flow opens as a centered popup. Hidden until you call `widget.open()` from a CTA on your page.                                                                                                     |
+| `"drawer"`       | Entire flow opens as a right-side drawer. Hidden until you call `widget.open()`.                                                                                                                          |
 
 ### `PrefillOptions`
 
@@ -186,13 +215,36 @@ If the partner prefers to receive USDT on-chain into their hot wallet, pass `set
 
 ### `ThemeOptions`
 
-| Token        | Type                                     | Default           |
-| ------------ | ---------------------------------------- | ----------------- |
-| `primary`    | CSS color                                | PayLater lime     |
-| `accent`     | CSS color                                | tint of `primary` |
-| `radius`     | `"none" \| "sm" \| "md" \| "lg" \| "xl"` | `"lg"`            |
-| `mode`       | `"light" \| "dark" \| "auto"`            | `"auto"`          |
-| `fontFamily` | CSS font-family                          | system stack      |
+Brand colors are inherently mode-specific (a lime that pops on dark forest washes out on white) so the SDK exposes them only inside `light` / `dark`. Layout and typography knobs that don't change between modes sit at the top level.
+
+| Token        | Type                                     | Default      | Notes                                                                                                            |
+| ------------ | ---------------------------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------- |
+| `radius`     | `"none" \| "sm" \| "md" \| "lg" \| "xl"` | `"lg"`       | Border-radius scale for cards, buttons, inputs.                                                                  |
+| `mode`       | `"light" \| "dark" \| "auto"`            | `"auto"`     | `"auto"` follows your page (Tailwind `.dark`, `data-theme`, `style.colorScheme`, OS preference — in that order). |
+| `fontFamily` | CSS font-family                          | system stack | Falls back to the Apple system stack.                                                                            |
+| `light`      | `ThemeColors`                            | brand lime   | Brand colors used when the widget renders in light mode.                                                         |
+| `dark`       | `ThemeColors`                            | brand lime   | Brand colors used when the widget renders in dark mode.                                                          |
+
+#### `ThemeColors`
+
+| Token     | Type      | Notes                                      |
+| --------- | --------- | ------------------------------------------ |
+| `primary` | CSS color | Brand primary color for that color scheme. |
+| `accent`  | CSS color | Brand accent color for that color scheme.  |
+
+```ts
+PayLater.init({
+  apiKey: "pk_live_*",
+  theme: {
+    radius: "lg",
+    mode: "auto",
+    // Per-mode brand colors. Set both, one, or neither — defaults take over
+    // for anything you omit.
+    light: { primary: "oklch(76.02% 0.18901 132.705)", accent: "oklch(0.93 0.08 131)" },
+    dark: { primary: "oklch(0.876 0.166 131)", accent: "oklch(0.4 0.12 131)" },
+  },
+});
+```
 
 ### `EventHandlers`
 

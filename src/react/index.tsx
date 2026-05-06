@@ -116,10 +116,12 @@ function PayLaterWidgetImpl(
     instanceRef.current.update({ theme: props.theme });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    props.theme?.primary,
+    props.theme?.light?.primary,
+    props.theme?.light?.accent,
+    props.theme?.dark?.primary,
+    props.theme?.dark?.accent,
     props.theme?.radius,
     props.theme?.mode,
-    props.theme?.accent,
     props.theme?.fontFamily,
   ]);
 

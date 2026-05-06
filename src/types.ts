@@ -86,13 +86,43 @@ export type Locale =
   | "nl-NL";
 
 /**
+ * @dev Brand colors for one color scheme.
+ *
+ * Brand colors are inherently mode-specific: a lime that pops on a dark
+ * forest tile washes out on a light one (and vice-versa). The SDK takes
+ * this seriously by exposing colors only inside `ThemeOptions.light` and
+ * `ThemeOptions.dark` — there is no "universal" brand color. Set both,
+ * one, or neither (in which case the SDK's brand defaults are used).
+ */
+export interface ThemeColors {
+  primary?: string; // Brand primary color for this mode. Any CSS color.
+  accent?: string; // Brand accent color for this mode. Any CSS color.
+}
+
+/**
  * @dev Theming knobs surfaced to partners.
+ *
+ * Brand colors live exclusively under `light` / `dark` so the values that
+ * matter per surface (the lime that's readable in light mode versus the
+ * one that pops in dark) are explicit. Layout / typography knobs that
+ * don't change between modes (`radius`, `fontFamily`, `mode`) sit at the
+ * top level.
  */
 export interface ThemeOptions {
-  primary?: string; // Brand primary color. Accepts any CSS color. Defaults to PayLater lime.
+  /**
+   * Brand colors applied when the widget renders in light mode. Only set
+   * the keys you want to override; the SDK ships sensible defaults.
+   */
+  light?: ThemeColors;
+
+  /**
+   * Brand colors applied when the widget renders in dark mode. Only set
+   * the keys you want to override; the SDK ships sensible defaults.
+   */
+  dark?: ThemeColors;
+
   radius?: RadiusScale; // Border-radius scale for cards, buttons, inputs. Defaults to "lg".
   mode?: ColorMode; // Color scheme. "auto" follows the host page or OS. Defaults to "auto".
-  accent?: string; // Optional accent color override (defaults to a tint of `primary`).
   fontFamily?: string; // Font family override. Falls back to system fonts.
 }
 

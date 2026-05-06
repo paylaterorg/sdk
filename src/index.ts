@@ -43,6 +43,7 @@ export type {
   RadiusScale,
   SelfCustodyOptions,
   SuccessEvent,
+  ThemeColors,
   ThemeOptions,
   WidgetInstance,
 } from "./types";

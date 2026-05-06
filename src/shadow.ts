@@ -100,19 +100,62 @@ export function injectStyles(shadow: ShadowRoot, css: string) {
 
 /**
  * @title applyTheme
- * @description Apply theme tokens to the shadow root host as CSS custom properties.
- * @param {ShadowRoot} shadow - The Shadow Root whose host element will receive the theme styles.
- * @param {ThemeOptions} theme - An object containing the theme tokens (primary, accent, fontFamily, radius, mode) to apply to the widget.
+ * @description Apply theme tokens to a shadow root by injecting a `<style>` element with `:host` rules. We use injected CSS rather than inline `style.setProperty` on the host so per-mode rules (`theme.light`, `theme.dark`) can win via attribute-selector specificity — inline styles can't be overridden by class/attribute selectors.
+ * @param {ShadowRoot} shadow - The Shadow Root whose `:host` rules will be (re)written.
+ * @param {ThemeOptions} theme - The theme to apply. `radius` / `fontFamily` / `mode` apply across both schemes; brand colors live under `light` / `dark`.
  */
 export function applyTheme(shadow: ShadowRoot, theme: ThemeOptions = {}) {
-  // The host element receives the styles; `:host` selectors in the inlined
-  // stylesheet pick them up.
   const host = shadow.host as HTMLElement;
-  if (theme.primary) host.style.setProperty("--paylater-primary", theme.primary);
-  if (theme.accent) host.style.setProperty("--paylater-accent", theme.accent);
-  if (theme.fontFamily) host.style.setProperty("--paylater-font-family", theme.fontFamily);
-  if (theme.radius) host.style.setProperty("--paylater-radius", RADIUS_PX[theme.radius]);
+
   if (theme.mode) applyColorMode(host, theme.mode);
+
+  // Layout / typography tokens that don't change per mode — go on `:host`.
+  const sharedRules = _formatRules({
+    "--paylater-font-family": theme.fontFamily,
+    "--paylater-radius": theme.radius ? RADIUS_PX[theme.radius] : undefined,
+  });
+
+  // Brand colors per scheme. The mode-attribute selector has higher
+  // specificity than `:host` so these always win over the SDK's built-in
+  // brand defaults baked into styles.css.
+  const lightRules = _formatRules({
+    "--paylater-primary": theme.light?.primary,
+    "--paylater-accent": theme.light?.accent,
+  });
+  const darkRules = _formatRules({
+    "--paylater-primary": theme.dark?.primary,
+    "--paylater-accent": theme.dark?.accent,
+  });
+
+  // Compose the final CSS with shared rules on `:host` and mode-specific rules under attribute selectors. Absence of a rule (e.g. no `theme.dark`) means we skip that selector so the SDK defaults apply for that scheme.
+  let css = "";
+  if (sharedRules) css += `:host{${sharedRules}}`;
+  if (lightRules) css += `:host([data-paylater-mode="light"]){${lightRules}}`;
+  if (darkRules) css += `:host([data-paylater-mode="dark"]){${darkRules}}`;
+
+  // Replace any prior theme overrides; absence of `css` (consumer cleared
+  // every override) means we drop the whole element.
+  const existing = shadow.querySelector("style[data-paylater-theme]");
+  if (existing) existing.remove();
+  if (css) {
+    const style = document.createElement("style");
+    style.setAttribute("data-paylater-theme", "");
+    style.textContent = css;
+    shadow.appendChild(style);
+  }
+}
+
+/**
+ * @dev Compose a CSS declaration block from a property → value record. Skips
+ * undefined values so callers can pass partials without shipping empty
+ * declarations.
+ */
+function _formatRules(props: Record<string, string | undefined>): string {
+  let out = "";
+  for (const [key, value] of Object.entries(props)) {
+    if (value !== undefined && value !== "") out += `${key}:${value};`;
+  }
+  return out;
 }
 
 /**
