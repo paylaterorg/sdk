@@ -17,7 +17,7 @@ export default defineConfig({
   clean: true,
   minify: true,
   treeshake: true,
-  splitting: true,
+  splitting: false,
   cjsInterop: true,
   target: "es2022",
   platform: "browser",
