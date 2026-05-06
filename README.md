@@ -16,22 +16,38 @@ npm install @paylater/sdk
 pnpm add @paylater/sdk
 # or
 yarn add @paylater/sdk
+# or
+bun add @paylater/sdk
 ```
+
+The React adapter (`@paylater/sdk/react`) declares `react` and `react-dom` as **optional peer dependencies** — install them only if you use it. The vanilla entry point (`@paylater/sdk`) has zero runtime dependencies on your end.
+
+You'll also need a sandbox key (`pk_test_*`) to render the widget without warnings — issued for free at [paylater.dev](https://paylater.dev).
 
 ## Quick start
 
-### Vanilla JS / TypeScript
+### React (recommended)
 
-```ts
-import { PayLater } from "@paylater/sdk";
+```tsx
+import { PayLaterWidget } from "@paylater/sdk/react";
 
-const widget = PayLater.init({
-  apiKey: "pk_live_*",
-  product: "bnpl_30d",
-  asset: "usdt",
+export function Checkout() {
+  return <PayLaterWidget apiKey="pk_test_*" onSuccess={({ ref }) => console.log("signed", ref)} />;
+}
+```
 
-  // Theme — every value optional. Brand colors live under `light` / `dark`.
-  theme: {
+That's it — three taps from your customer to a signed 30-day BNPL agreement. The adapter wraps the vanilla SDK and handles its own lifecycle; theme changes patch the live widget without remounting.
+
+A fuller example with theme tokens, locale, and event handlers:
+
+```tsx
+<PayLaterWidget
+  apiKey="pk_test_*"
+  position="inline" // "inline" | "inline-popup"
+  locale="en-SE"
+  theme={{
+    radius: "lg",
+    mode: "auto", // "light" | "dark" | "auto"
     light: {
       primary: "oklch(76.02% 0.18901 132.705)",
       accent: "oklch(0.93 0.08 131)",
@@ -40,13 +56,21 @@ const widget = PayLater.init({
       primary: "oklch(0.876 0.166 131)",
       accent: "oklch(0.4 0.12 131)",
     },
-    radius: "lg",
-    mode: "auto", // "light" | "dark" | "auto"
-  },
+  }}
+  onReady={() => console.log("widget mounted")}
+  onSuccess={(event) => track("paylater.signed", event)}
+  onError={(error) => console.error("[paylater]", error)}
+  onPhaseChange={(phase) => console.log("phase →", phase)}
+/>
+```
 
-  position: "inline", // "inline" | "inline-popup"
-  locale: "en-SE",
+### Vanilla JS / TypeScript
 
+```ts
+import { PayLater } from "@paylater/sdk";
+
+const widget = PayLater.init({
+  apiKey: "pk_test_*",
   on: {
     success: ({ ref }) => track("paylater.signed", { ref }),
     error: (e) => console.error(e),
@@ -56,34 +80,7 @@ const widget = PayLater.init({
 widget.mount("#paylater");
 ```
 
-### React
-
-```tsx
-import { PayLaterWidget } from "@paylater/sdk/react";
-
-export function Checkout() {
-  return (
-    <PayLaterWidget
-      apiKey="pk_live_*"
-      theme={{
-        light: {
-          primary: "oklch(76.02% 0.18901 132.705)",
-          accent: "oklch(0.93 0.08 131)",
-        },
-        dark: {
-          primary: "oklch(0.876 0.166 131)",
-          accent: "oklch(0.4 0.12 131)",
-        },
-        radius: "lg",
-        mode: "auto",
-      }}
-      onSuccess={({ ref }) => console.log("signed", ref)}
-    />
-  );
-}
-```
-
-The React adapter wraps the vanilla SDK and handles its own lifecycle. Theme changes update the live widget without remounting.
+Same options surface as the React adapter — see the API tables below.
 
 ### CDN (browser, no build step)
 
@@ -99,39 +96,36 @@ The React adapter wraps the vanilla SDK and handles its own lifecycle. Theme cha
 
 When the partner runs a custodial product — exchanges, gambling platforms, neobank wallets — the customer doesn't need to see USDT plumbing at all. The partner just credits the user's internal balance off-chain and flags the deposit as PayLater-funded, so withdrawals stay locked until the BNPL invoice settles within 30 days.
 
-```ts
-import { PayLater } from "@paylater/sdk";
+```tsx
+import { PayLaterWidget } from "@paylater/sdk/react";
 
-PayLater.init({
-  apiKey: "pk_live_*",
-
-  // The user is already logged in to your platform — skip everything they
-  // shouldn't have to retype.
-  prefill: {
-    email: "customer@yourplatform.com",
-  },
-  lock: ["email"], // visible but not editable
-
-  // Off-chain merchant custody: no wallet, no network, no on-chain
-  // transfer. PayLater records the obligation, fires `success`, and you
-  // increment the user's balance in your own ledger.
-  custody: {
-    mode: "merchant",
-    merchantUserId: "usr_example123", // your internal identifier for the user, for attribution in the webhook
-    description: "Deposit to your account",
-  },
-
-  on: {
-    success: ({ ref, merchantUserId }) => {
-      // Use `success` for UX only — show the customer a confirmation state,
-      // emit analytics, optimistically refresh their balance display.
-      track("paylater.signed", { ref, userId: merchantUserId });
-    },
-  },
-}).mount("#paylater");
+export function Deposit() {
+  return (
+    <PayLaterWidget
+      apiKey="pk_test_*"
+      // The user is already logged in to your platform — skip everything they
+      // shouldn't have to retype.
+      prefill={{ email: "customer@yourplatform.com" }}
+      lock={["email"]} // visible but not editable
+      // Off-chain merchant custody: no wallet, no network, no on-chain
+      // transfer. PayLater records the obligation, fires `success`, and your
+      // backend credits the user's balance from the signed webhook.
+      custody={{
+        mode: "merchant",
+        merchantUserId: "usr_example123", // your internal id, echoed in the webhook
+        description: "Deposit to your account",
+      }}
+      onSuccess={({ ref, merchantUserId }) => {
+        // `success` is for UX (toasts, redirects, optimistic balance updates).
+        // The authoritative credit happens in your webhook handler.
+        track("paylater.signed", { ref, userId: merchantUserId });
+      }}
+    />
+  );
+}
 ```
 
-> **Authoritative settlement runs server-side.** The publishable key (`pk_*`) above is safe to ship in the browser — it can't move money. When the customer signs, PayLater posts the signed credit agreement to your webhook endpoint, signed with your secret key (`sk_*`). That webhook is what actually credits the user's balance and flags the deposit as PayLater-funded. Treat the client-side `success` event as a UX cue, not as authorization.
+> **Authoritative settlement runs server-side.** The publishable key (`pk_*`) is safe to ship in the browser — it can't move money. When the customer signs, PayLater posts the signed credit agreement to your webhook endpoint, signed with your secret key (`sk_*`). That webhook is what actually credits the user's balance and flags the deposit as PayLater-funded. Treat the client-side `success` event as a UX cue, not as authorization.
 
 Prefer to receive USDT on-chain into your hot wallet instead of crediting off-chain? Pass `settlementAddress` + `settlementNetwork` together — the end-user UX is identical, only PayLater's settlement path changes.
 
@@ -146,9 +140,9 @@ The SDK renders inside a **Shadow DOM** attached to your mount target. That mean
 
 ## API
 
-### `PayLater.init(options)`
+### `PayLater.init(options)` / `<PayLaterWidget {...options} />`
 
-Returns a `WidgetInstance`. Call `mount()` on the result.
+Returns a `WidgetInstance` (vanilla) or renders a self-managing component (React). Both consume the same option surface.
 
 | Option      | Type                                                           | Default                    | Notes                                                                                                                                  |
 | ----------- | -------------------------------------------------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
@@ -164,7 +158,7 @@ Returns a `WidgetInstance`. Call `mount()` on the result.
 | `hide`      | `FieldId[]`                                                    | `[]`                       | Remove fields from the UI entirely (must be covered by prefill)                                                                        |
 | `lock`      | `FieldId[]`                                                    | `[]`                       | Make fields read-only (must be covered by prefill)                                                                                     |
 | `custody`   | `CustodyOptions`                                               | `{ mode: "self" }`         | `"self"` ships USDT on-chain to user wallet; `"merchant"` lets the partner credit the user's balance internally (off-chain by default) |
-| `on`        | `EventHandlers`                                                | —                          | See below                                                                                                                              |
+| `on`        | `EventHandlers`                                                | —                          | Vanilla SDK only — the React adapter takes `onSuccess`, `onError`, `onClose`, `onReady`, `onPhaseChange` as top-level props            |
 | `apiOrigin` | `string`                                                       | `https://api.paylater.dev` | QA-environment override                                                                                                                |
 
 ### Position modes
@@ -180,12 +174,12 @@ How the widget renders relative to its mount target.
 
 Anything you set here renders as the initial value. Pair with `lock` to make a prefilled field read-only or `hide` to remove it entirely.
 
-| Field           | Type      | Notes                                                                 |
-| --------------- | --------- | --------------------------------------------------------------------- |
-| `email`         | `string`  | Customer email — receipt + repayment reminders go here                |
-| `walletAddress` | `string`  | Self-custody recipient wallet (ignored when `custody="merchant"`)     |
-| `network`       | `Network` | Settlement chain for self-custody (ignored when `custody="merchant"`) |
-| `fullName`      | `string`  | Pre-resolved legal name from your KYC — presentation-only             |
+| Field           | Type      | Notes                                                                   |
+| --------------- | --------- | ----------------------------------------------------------------------- |
+| `email`         | `string`  | Customer email — receipt + repayment reminders go here                  |
+| `walletAddress` | `string`  | Self-custody recipient wallet (ignored when `custody="merchant"`)       |
+| `network`       | `Network` | Settlement chain for self-custody (ignored when `custody="merchant"`)   |
+| `fullName`      | `string`  | Pre-resolved legal name from your KYC — surfaced on the success summary |
 
 ### `FieldId`
 
@@ -232,27 +226,29 @@ Brand colors are inherently mode-specific (a lime that pops on dark forest washe
 | `primary` | CSS color | Brand primary color for that color scheme. |
 | `accent`  | CSS color | Brand accent color for that color scheme.  |
 
-```ts
-PayLater.init({
-  apiKey: "pk_live_*",
-  theme: {
+```tsx
+<PayLaterWidget
+  apiKey="pk_test_*"
+  theme={{
     radius: "lg",
     mode: "auto",
     // Per-mode brand colors. Set both, one, or neither — defaults take over
-    // for anything you omit.
+    // for anything you omit. Values below match the SDK's bundled defaults.
     light: { primary: "oklch(76.02% 0.18901 132.705)", accent: "oklch(0.93 0.08 131)" },
     dark: { primary: "oklch(0.876 0.166 131)", accent: "oklch(0.4 0.12 131)" },
-  },
-});
+  }}
+/>
 ```
 
 ### `EventHandlers`
+
+Vanilla SDK accepts an `on: { ... }` object. The React adapter exposes the same handlers as top-level props (`onSuccess`, `onError`, `onClose`, `onReady`, `onPhaseChange`).
 
 ```ts
 on: {
   success?: (event: SuccessEvent) => void;       // signed credit agreement
   error?:   (event: ErrorEvent) => void;         // unrecoverable failure
-  close?:   (event: CloseEvent) => void;         // dismissed mid-flow
+  close?:   (event: CloseEvent) => void;         // unmounted (abandoned: true if mid-flow)
   ready?:   () => void;                          // mounted and ready
   phaseChange?: (phase: "amount" | "delivery" | "sign" | "done") => void;
 }
@@ -260,7 +256,7 @@ on: {
 
 ### `WidgetInstance`
 
-The object returned by `init()`.
+The object returned by `PayLater.init()` (vanilla SDK only — the React adapter manages it for you).
 
 | Method          | Effect                                                                             |
 | --------------- | ---------------------------------------------------------------------------------- |
@@ -284,7 +280,7 @@ The object returned by `init()`.
 
 ## Try it locally
 
-A live showcase of every SDK configuration lives at `examples/all-cases/` — a Vite React app that renders each scenario alongside the exact code that produced it. Run it locally:
+A live showcase of every SDK configuration lives at `examples/all-cases/` — a Vite React app that renders each scenario alongside the exact code that produced it (and a one-tap copy button on every snippet).
 
 ```bash
 git clone https://github.com/paylaterorg/sdk.git
@@ -301,15 +297,19 @@ cp .env.example .env       # plug in your sandbox key — see "API key" below
 npm run dev
 ```
 
+Vite serves it on `http://localhost:5174`. Toggle the host-page theme at the top of the page to see every widget set to `mode: "auto"` flip in lockstep.
+
 #### API key
 
 The showcase reads its sandbox key from `VITE_PAYLATER_API_KEY` in `examples/all-cases/.env`. The `.env.example` file ships with a placeholder — replace it with your own `pk_test_*` key (issued from [paylater.dev](https://paylater.dev)) to clear the widget's "Provide a valid `pk_test_*` API key" warning. Without a `.env`, the showcase falls back to a placeholder so the layout still renders, but the Continue button stays disabled with the warning shown.
 
-Vite serves it on `http://localhost:5174`. Toggle the host-page theme at the top of the page to see every widget set to `mode: "auto"` flip in lockstep.
+#### What's covered
 
-The showcase covers: both position modes (inline / inline-popup), country presets and locks, prefilled / hidden / locked fields, both custody modes (off-chain + on-chain), per-mode brand themes, forced light/dark mode, custom radius and font family, and an event-handlers panel that surfaces the `success` / `phaseChange` payloads inline.
+Both position modes (inline / inline-popup), country presets and locks, prefilled / hidden / locked fields, both custody modes (off-chain + on-chain), per-mode brand themes, forced light/dark mode, custom radius and font family, live theme updates via `update()`, and an event-handlers panel that surfaces the `success` / `phaseChange` payloads inline.
 
-There are also two minimal entry points if you just want a single file to copy:
+#### Minimal entry points
+
+If you just want a single file to copy:
 
 - **`examples/react.tsx`** — drop-in React component
 - **`examples/vanilla.html`** — single-file ES module import
