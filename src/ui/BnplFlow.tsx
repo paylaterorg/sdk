@@ -92,6 +92,14 @@ export function BnplFlow({
   const walletLocked = lock.has("walletAddress");
   const networkLocked = lock.has("network");
 
+  // The settlement network is meaningful when USDT actually moves on-chain —
+  // either to the customer's wallet (`self` custody) or to the partner's hot
+  // wallet (merchant custody with `settlementAddress` set). Pure off-chain
+  // merchant custody has no chain, so the success summary hides the row.
+  const merchantSettlementOnChain =
+    options.custody?.mode === "merchant" && Boolean(options.custody.settlementAddress);
+  const showSettlementNetwork = !merchantCustody || merchantSettlementOnChain;
+
   const [phase, setPhaseInternal] = useState<Phase>("amount");
   const [countryCode, setCountryCode] = useState<CountryCode>(initialCountry);
   const country = COUNTRIES[countryCode];
@@ -467,10 +475,12 @@ export function BnplFlow({
                 <span>Receive</span>
                 <span>{usdt.toFixed(2)} USDT</span>
               </div>
-              <div className="pl-summary-row">
-                <span>Network</span>
-                <span>{NETWORKS.find((n) => n.id === network)?.ticker ?? network}</span>
-              </div>
+              {showSettlementNetwork && (
+                <div className="pl-summary-row">
+                  <span>Network</span>
+                  <span>{NETWORKS.find((n) => n.id === network)?.ticker ?? network}</span>
+                </div>
+              )}
               <div className="pl-summary-row">
                 <span>Repay</span>
                 <span>{formatMoney(country, amount)}</span>
