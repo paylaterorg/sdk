@@ -206,7 +206,10 @@ export function BnplFlow({
     setDueDate(thirtyDaysFromNow());
   };
 
-  const verifiedName = MOCK_NAMES[initialCountry];
+  // Partners that have already KYC'd the customer can pre-resolve the
+  // verified name via `prefill.fullName`. The eID provider is still the
+  // source of truth in production — this just controls what we display.
+  const verifiedName = options.prefill?.fullName ?? MOCK_NAMES[initialCountry];
   const verifiedId = MOCK_ID_NUMBERS[initialCountry];
 
   const [copied, setCopied] = useState(false);

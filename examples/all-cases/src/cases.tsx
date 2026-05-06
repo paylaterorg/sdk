@@ -152,6 +152,30 @@ export const CASES: Case[] = [
     ),
   },
   {
+    id: "prefilled-fullname",
+    title: "Pre-filled legal name",
+    description:
+      "Already KYC'd the customer? Pass the legal name via `prefill.fullName`. The eID provider remains the source of truth in production, but the success summary surfaces this name immediately rather than waiting for the mock to fill it in.",
+    code: `<PayLaterWidget
+  apiKey="pk_test_examplekey1234567890"
+  prefill={{
+    email: "customer@yourplatform.com",
+    fullName: "Jane Q. Customer",
+  }}
+  lock={["email"]}
+/>`,
+    Demo: () => (
+      <PayLaterWidget
+        apiKey={TEST_KEY}
+        prefill={{
+          email: "customer@yourplatform.com",
+          fullName: "Jane Q. Customer",
+        }}
+        lock={["email"]}
+      />
+    ),
+  },
+  {
     id: "merchant-offchain",
     title: "Merchant custody — off-chain (default)",
     description:
@@ -212,6 +236,59 @@ export const CASES: Case[] = [
     ),
   },
   {
+    id: "kitchen-sink",
+    title: "Realistic partner integration (everything together)",
+    description:
+      "What an actual partner integration looks like in production: inline-popup position so the page stays compact, country locked to a single market, customer's email prefilled from the partner's session and locked, KYC'd legal name prefilled, off-chain merchant custody tied to the partner's user id, custom brand colors per mode, and a `success` handler that fires partner-side analytics (the authoritative ledger update arrives via the signed webhook).",
+    code: `<PayLaterWidget
+  apiKey="pk_test_examplekey1234567890"
+  position="inline-popup"
+  country="SE"
+  lock={["country", "email"]}
+  prefill={{
+    email: "customer@yourplatform.com",
+    fullName: "Jane Q. Customer",
+  }}
+  custody={{
+    mode: "merchant",
+    merchantUserId: "usr_example123",
+    description: "Deposit to your account",
+  }}
+  theme={{
+    radius: "lg",
+    mode: "auto",
+    light: { primary: "oklch(0.62 0.22 280)", accent: "oklch(0.92 0.06 280)" },
+    dark:  { primary: "oklch(0.78 0.20 280)", accent: "oklch(0.40 0.14 280)" },
+  }}
+  onSuccess={({ ref, merchantUserId }) => {
+    track("paylater.signed", { ref, userId: merchantUserId });
+  }}
+/>`,
+    Demo: () => (
+      <PayLaterWidget
+        apiKey={TEST_KEY}
+        position="inline-popup"
+        country="SE"
+        lock={["country", "email"]}
+        prefill={{
+          email: "customer@yourplatform.com",
+          fullName: "Jane Q. Customer",
+        }}
+        custody={{
+          mode: "merchant",
+          merchantUserId: "usr_example123",
+          description: "Deposit to your account",
+        }}
+        theme={{
+          radius: "lg",
+          mode: "auto",
+          light: { primary: "oklch(0.62 0.22 280)", accent: "oklch(0.92 0.06 280)" },
+          dark: { primary: "oklch(0.78 0.20 280)", accent: "oklch(0.40 0.14 280)" },
+        }}
+      />
+    ),
+  },
+  {
     id: "custom-theme",
     title: "Custom brand colors per mode",
     description:
@@ -233,6 +310,28 @@ export const CASES: Case[] = [
           mode: "auto",
           light: { primary: "oklch(0.62 0.22 280)", accent: "oklch(0.92 0.06 280)" },
           dark: { primary: "oklch(0.78 0.20 280)", accent: "oklch(0.40 0.14 280)" },
+        }}
+      />
+    ),
+  },
+  {
+    id: "accent-only",
+    title: "Accent-only brand override",
+    description:
+      "Keep the SDK's default lime primary but tweak just the accent (used by tinted backgrounds, the amount-card gradient, and summary highlights). Lets partners nudge the look without choosing a full brand color.",
+    code: `<PayLaterWidget
+  apiKey="pk_test_examplekey1234567890"
+  theme={{
+    light: { accent: "oklch(0.93 0.10 28)" },
+    dark:  { accent: "oklch(0.4 0.14 28)" },
+  }}
+/>`,
+    Demo: () => (
+      <PayLaterWidget
+        apiKey={TEST_KEY}
+        theme={{
+          light: { accent: "oklch(0.93 0.10 28)" },
+          dark: { accent: "oklch(0.4 0.14 28)" },
         }}
       />
     ),
@@ -296,6 +395,44 @@ export const CASES: Case[] = [
     ),
   },
   {
+    id: "font-webfont",
+    title: "Custom font (webfont)",
+    description:
+      "Same fontFamily knob as before, but loading a webfont from the host page. The host's `<link>` to Google Fonts (`Inter` in this showcase's `index.html`) makes the font available; the SDK just references it by name.",
+    code: `// In your host page <head>:
+// <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+
+<PayLaterWidget
+  apiKey="pk_test_examplekey1234567890"
+  theme={{ fontFamily: "Inter, sans-serif" }}
+/>`,
+    Demo: () => <PayLaterWidget apiKey={TEST_KEY} theme={{ fontFamily: "Inter, sans-serif" }} />,
+  },
+  {
+    id: "live-update",
+    title: "Live theme updates (`update()` via React state)",
+    description:
+      "Partners can flip the theme on the fly without remounting the widget. The React adapter forwards updated `theme` props through `instance.update()` under the hood. Click the buttons to swap brand color schemes — every active widget rerenders in place.",
+    code: `function LiveTheme() {
+  const [scheme, setScheme] = useState<"lime" | "purple" | "rose">("lime");
+  const themes = {
+    lime:   { light: { primary: "oklch(76% 0.19 132)" }, dark: { primary: "oklch(0.88 0.17 131)" } },
+    purple: { light: { primary: "oklch(0.62 0.22 280)" }, dark: { primary: "oklch(0.78 0.20 280)" } },
+    rose:   { light: { primary: "oklch(0.65 0.24 12)" },  dark: { primary: "oklch(0.78 0.22 12)" } },
+  };
+
+  return (
+    <>
+      <button onClick={() => setScheme("lime")}>Lime</button>
+      <button onClick={() => setScheme("purple")}>Purple</button>
+      <button onClick={() => setScheme("rose")}>Rose</button>
+      <PayLaterWidget apiKey="pk_test_examplekey1234567890" theme={themes[scheme]} />
+    </>
+  );
+}`,
+    Demo: () => <LiveUpdateDemo />,
+  },
+  {
     id: "events",
     title: "Event handlers (success / phaseChange)",
     description:
@@ -340,6 +477,54 @@ function EventsDemo(): ReactNode {
           </span>
         ))}
       </aside>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Live theme-swap demo. Three buttons flip a state-bound `theme` prop. The   */
+/* React adapter forwards the change to `instance.update({ theme })` under    */
+/* the hood, so the widget repaints without remounting.                       */
+/* -------------------------------------------------------------------------- */
+
+const SCHEMES: Record<
+  "lime" | "purple" | "rose",
+  { light: { primary: string }; dark: { primary: string } }
+> = {
+  lime: {
+    light: { primary: "oklch(76.02% 0.18901 132.705)" },
+    dark: { primary: "oklch(0.876 0.166 131)" },
+  },
+  purple: {
+    light: { primary: "oklch(0.62 0.22 280)" },
+    dark: { primary: "oklch(0.78 0.20 280)" },
+  },
+  rose: {
+    light: { primary: "oklch(0.65 0.24 12)" },
+    dark: { primary: "oklch(0.78 0.22 12)" },
+  },
+};
+
+function LiveUpdateDemo(): ReactNode {
+  const [scheme, setScheme] = useState<"lime" | "purple" | "rose">("lime");
+
+  return (
+    <div className="live-update-demo">
+      <div className="scheme-row" role="radiogroup" aria-label="Brand color">
+        {(Object.keys(SCHEMES) as Array<keyof typeof SCHEMES>).map((id) => (
+          <button
+            key={id}
+            type="button"
+            role="radio"
+            aria-checked={scheme === id}
+            className={`scheme-btn scheme-btn-${id}${scheme === id ? " active" : ""}`}
+            onClick={() => setScheme(id)}
+          >
+            {id[0]!.toUpperCase() + id.slice(1)}
+          </button>
+        ))}
+      </div>
+      <PayLaterWidget apiKey={TEST_KEY} theme={SCHEMES[scheme]} />
     </div>
   );
 }
