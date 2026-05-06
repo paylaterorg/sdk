@@ -162,7 +162,7 @@ export const CASES: Case[] = [
   lock={["email"]}
   custody={{
     mode: "merchant",
-    merchantUserId: "usr_4029381",
+    merchantUserId: "usr_example123",
     description: "Deposit to your account",
   }}
   // Use \`success\` for UX (toast, redirect, optimistic balance ping) — the
@@ -179,7 +179,7 @@ export const CASES: Case[] = [
         lock={["email"]}
         custody={{
           mode: "merchant",
-          merchantUserId: "usr_4029381",
+          merchantUserId: "usr_example123",
           description: "Deposit to your account",
         }}
       />
@@ -194,7 +194,7 @@ export const CASES: Case[] = [
   apiKey="pk_test_examplekey1234567890"
   custody={{
     mode: "merchant",
-    merchantUserId: "usr_4029381",
+    merchantUserId: "usr_example123",
     settlementAddress: "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
     settlementNetwork: "solana",
   }}
@@ -204,7 +204,7 @@ export const CASES: Case[] = [
         apiKey={TEST_KEY}
         custody={{
           mode: "merchant",
-          merchantUserId: "usr_4029381",
+          merchantUserId: "usr_example123",
           settlementAddress: "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
           settlementNetwork: "solana",
         }}

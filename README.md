@@ -117,7 +117,7 @@ PayLater.init({
   // increment the user's balance in your own ledger.
   custody: {
     mode: "merchant",
-    merchantUserId: "usr_4029381", // your internal identifier for the user, for attribution in the webhook
+    merchantUserId: "usr_example123", // your internal identifier for the user, for attribution in the webhook
     description: "Deposit to your account",
   },
 
