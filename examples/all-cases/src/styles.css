@@ -127,15 +127,8 @@ p {
   width: 2rem;
   height: 2rem;
   border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--accent);
-  color: var(--accent-fg);
-  font-weight: 800;
-  font-family: serif;
-  font-size: 1.25rem;
   flex-shrink: 0;
+  display: block;
 }
 
 .page-subtitle {

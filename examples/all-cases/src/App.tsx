@@ -45,9 +45,13 @@ export function App() {
       <header className="page-header">
         <div className="page-header-inner">
           <div className="brand">
-            <span className="brand-mark" aria-hidden>
-              P
-            </span>
+            <svg className="brand-mark" viewBox="0 0 1024 1024" width="32" height="32" aria-hidden>
+              <rect width="1024" height="1024" fill="oklch(0.876 0.166 131)" />
+              <path
+                d="M369 274H655V416.8L559.667 512L655 607.2V750H369V607.2L464.333 512L369 416.8V274ZM607.333 619.1L512 523.9L416.667 619.1V702.4H607.333V619.1ZM512 500.1L607.333 404.9V321.6H416.667V404.9L512 500.1ZM464.333 369.2H559.667V387.05L512 434.65L464.333 387.05V369.2Z"
+                fill="oklch(0.18 0.04 131)"
+              />
+            </svg>
             <div>
               <h1>@paylater/sdk · all cases</h1>
               <p className="page-subtitle">
