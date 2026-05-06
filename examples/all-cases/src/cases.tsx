@@ -9,7 +9,9 @@
  */
 
 import { PayLaterWidget } from "@paylater/sdk/react";
-import { useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
+import { EventsDemo } from "./demos/EventsDemo";
+import { LiveUpdateDemo } from "./demos/LiveUpdateDemo";
 
 /**
  * @dev Sandbox key used for every showcased widget. Pulled from
@@ -447,84 +449,6 @@ export const CASES: Case[] = [
   },
 ];
 
-/* -------------------------------------------------------------------------- */
-/* Inline event-handlers demo with a tiny inline log so partners can see the   */
-/* events fire without opening DevTools.                                       */
-/* -------------------------------------------------------------------------- */
-
-function EventsDemo(): ReactNode {
-  const [log, setLog] = useState<string[]>([]);
-
-  const append = (msg: string) =>
-    setLog((prev) => [`${new Date().toLocaleTimeString()} — ${msg}`, ...prev].slice(0, 6));
-
-  return (
-    <div className="events-demo">
-      <PayLaterWidget
-        apiKey={TEST_KEY}
-        onSuccess={(event) => append(`success ref=${event.ref} usdt=${event.usdt.toFixed(2)}`)}
-        onError={(error) => append(`error code=${error.code}`)}
-        onPhaseChange={(phase) => append(`phase → ${phase}`)}
-      />
-      <aside className="events-log" aria-label="Event log">
-        <strong>Event log</strong>
-        {log.length === 0 && (
-          <span className="events-log-empty">No events yet — tap Continue.</span>
-        )}
-        {log.map((line, i) => (
-          <span key={i} className="events-log-line">
-            {line}
-          </span>
-        ))}
-      </aside>
-    </div>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/* Live theme-swap demo. Three buttons flip a state-bound `theme` prop. The   */
-/* React adapter forwards the change to `instance.update({ theme })` under    */
-/* the hood, so the widget repaints without remounting.                       */
-/* -------------------------------------------------------------------------- */
-
-const SCHEMES: Record<
-  "lime" | "purple" | "rose",
-  { light: { primary: string }; dark: { primary: string } }
-> = {
-  lime: {
-    light: { primary: "oklch(76.02% 0.18901 132.705)" },
-    dark: { primary: "oklch(0.876 0.166 131)" },
-  },
-  purple: {
-    light: { primary: "oklch(0.62 0.22 280)" },
-    dark: { primary: "oklch(0.78 0.20 280)" },
-  },
-  rose: {
-    light: { primary: "oklch(0.65 0.24 12)" },
-    dark: { primary: "oklch(0.78 0.22 12)" },
-  },
-};
-
-function LiveUpdateDemo(): ReactNode {
-  const [scheme, setScheme] = useState<"lime" | "purple" | "rose">("lime");
-
-  return (
-    <div className="live-update-demo">
-      <div className="scheme-row" role="radiogroup" aria-label="Brand color">
-        {(Object.keys(SCHEMES) as Array<keyof typeof SCHEMES>).map((id) => (
-          <button
-            key={id}
-            type="button"
-            role="radio"
-            aria-checked={scheme === id}
-            className={`scheme-btn scheme-btn-${id}${scheme === id ? " active" : ""}`}
-            onClick={() => setScheme(id)}
-          >
-            {id[0]!.toUpperCase() + id.slice(1)}
-          </button>
-        ))}
-      </div>
-      <PayLaterWidget apiKey={TEST_KEY} theme={SCHEMES[scheme]} />
-    </div>
-  );
-}
+// EventsDemo + LiveUpdateDemo live in `./demos/` so this file can stay a
+// pure data module — Vite's React Fast Refresh requires component files
+// not to mix component definitions with non-component exports like CASES.
