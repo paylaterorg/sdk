@@ -284,6 +284,33 @@ The object returned by `init()`.
 | `network_error`         | Lost connectivity during a backend call                          |
 | `unknown`               | Catch-all — `cause` is populated                                 |
 
+## Try it locally
+
+A live showcase of every SDK configuration lives at `examples/all-cases/` — a Vite React app that renders each scenario alongside the exact code that produced it. Run it locally:
+
+```bash
+git clone https://github.com/paylaterorg/sdk.git
+cd sdk
+
+# Build the SDK once so the example can resolve `@paylater/sdk` via its file dep
+npm install
+npm run build
+
+# Then boot the showcase
+cd examples/all-cases
+npm install
+npm run dev
+```
+
+Vite serves it on `http://localhost:5174`. Toggle the host-page theme at the top of the page to see every widget set to `mode: "auto"` flip in lockstep.
+
+The showcase covers: every position mode (inline / inline-popup / modal / drawer), country presets and locks, prefilled / hidden / locked fields, both custody modes (off-chain + on-chain), per-mode brand themes, forced light/dark mode, custom radius and font family, and an event-handlers panel that surfaces the `success` / `phaseChange` payloads inline.
+
+There are also two minimal entry points if you just want a single file to copy:
+
+- **`examples/react.tsx`** — drop-in React component
+- **`examples/vanilla.html`** — single-file ES module import
+
 ## Markets
 
 PayLater is live in 8 European markets: 🇸🇪 🇳🇴 🇫🇮 🇩🇰 🇩🇪 🇫🇷 🇳🇱 🇬🇧 — full eID coverage via Scrive.

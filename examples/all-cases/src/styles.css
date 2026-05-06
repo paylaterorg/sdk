@@ -1,0 +1,447 @@
+/* ---------------------------------------------------------------------------
+ * Example showcase styles. Strictly host-page CSS — the widget itself is
+ * Shadow DOM isolated, so nothing here can leak into it.
+ * --------------------------------------------------------------------------- */
+
+:root {
+  --bg: oklch(0.99 0.012 131);
+  --surface: oklch(0.97 0.012 131);
+  --fg: oklch(0.18 0.04 131);
+  --muted: oklch(0.45 0.04 131);
+  --card: oklch(1 0 0);
+  --border: oklch(0.89 0.025 131);
+  --border-strong: oklch(0.82 0.03 131);
+  --accent: oklch(76.02% 0.18901 132.705);
+  --accent-fg: oklch(0.18 0.04 131);
+  --code-bg: oklch(0.18 0.04 131);
+  --code-fg: oklch(0.94 0.04 131);
+  --code-comment: oklch(0.65 0.03 131);
+
+  color-scheme: light;
+}
+
+html.dark {
+  --bg: oklch(0.18 0.04 131);
+  --surface: oklch(0.21 0.045 131);
+  --fg: oklch(0.95 0.05 131);
+  --muted: oklch(0.74 0.05 131);
+  --card: oklch(0.23 0.05 131);
+  --border: oklch(1 0 0 / 0.1);
+  --border-strong: oklch(1 0 0 / 0.18);
+  --accent: oklch(0.876 0.166 131);
+  --accent-fg: oklch(0.18 0.04 131);
+  --code-bg: oklch(0.12 0.03 131);
+  --code-fg: oklch(0.94 0.04 131);
+  --code-comment: oklch(0.55 0.03 131);
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", "Helvetica Neue", Helvetica, Arial,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+p {
+  margin: 0;
+}
+
+/* Inline `code` in body copy */
+.case-description code,
+.page-subtitle code,
+.page-footer code,
+.case-header h2 code {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace;
+  font-size: 0.875em;
+  padding: 0.0625rem 0.3125rem;
+  border-radius: 0.25rem;
+  background: color-mix(in oklch, var(--accent) 14%, transparent);
+  color: color-mix(in oklch, var(--accent) 70%, var(--fg));
+}
+
+.page {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------------------------------------------------------------------------
+ * Header — brand + theme toggle.
+ * --------------------------------------------------------------------------- */
+
+.page-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in oklch, var(--bg) 88%, transparent);
+  backdrop-filter: saturate(160%) blur(14px);
+}
+
+.page-header-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  min-width: 0;
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.brand-mark {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-weight: 800;
+  font-family: serif;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.page-subtitle {
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.theme-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  padding: 0.1875rem;
+  gap: 0.125rem;
+  background: var(--card);
+  flex-shrink: 0;
+}
+
+.theme-toggle-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.375rem 0.875rem;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition:
+    color 150ms ease,
+    background 150ms ease;
+  white-space: nowrap;
+}
+
+.theme-toggle-btn.active {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+/* ---------------------------------------------------------------------------
+ * Sticky table-of-contents strip.
+ * --------------------------------------------------------------------------- */
+
+.case-toc {
+  border-top: 1px solid var(--border);
+  background: color-mix(in oklch, var(--surface) 92%, transparent);
+}
+
+.case-toc-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0.625rem 1.5rem;
+  display: flex;
+  gap: 0.375rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.case-toc-inner::-webkit-scrollbar {
+  display: none;
+}
+
+.case-toc-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3125rem 0.75rem;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--fg);
+  text-decoration: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition:
+    border-color 150ms ease,
+    color 150ms ease,
+    background 150ms ease;
+}
+
+.case-toc-pill:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.case-toc-num {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.case-toc-pill:hover .case-toc-num {
+  color: var(--accent);
+}
+
+/* ---------------------------------------------------------------------------
+ * Cases list.
+ * --------------------------------------------------------------------------- */
+
+.cases {
+  flex: 1;
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2.25rem;
+}
+
+.case {
+  scroll-margin-top: 6.5rem;
+  border: 1px solid var(--border);
+  border-radius: 1.25rem;
+  background: var(--card);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.case-header {
+  padding: 1.125rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.case-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  margin: 0;
+}
+
+.case-index {
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-fg);
+  background: var(--accent);
+  font-size: 0.6875rem;
+  font-weight: 800;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  letter-spacing: 0.04em;
+}
+
+.case-description {
+  margin: 0.5rem 0 0;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  max-width: 80ch;
+  line-height: 1.55;
+}
+
+/* Two-column code/live grid that collapses to single column on small screens. */
+.case-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 960px) {
+  .case-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.case-code,
+.case-demo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+@media (min-width: 960px) {
+  .case-code {
+    border-right: 1px solid var(--border);
+  }
+}
+
+.case-code-bar,
+.case-demo-bar {
+  padding: 0.5rem 1rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.case-code-bar {
+  color: oklch(0.7 0.03 131);
+  border-bottom-color: oklch(1 0 0 / 0.06);
+  background: var(--code-bg);
+}
+
+.case-code {
+  background: var(--code-bg);
+}
+
+.case-code pre {
+  margin: 0;
+  padding: 1rem 1.125rem 1.25rem;
+  overflow-x: auto;
+  flex: 1;
+}
+
+.case-code code {
+  background: transparent;
+  color: var(--code-fg);
+  padding: 0;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  white-space: pre;
+}
+
+.case-demo {
+  background: var(--surface);
+}
+
+.case-demo-canvas {
+  padding: 1.25rem;
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  min-width: 0;
+}
+
+/* ---------------------------------------------------------------------------
+ * Modal/drawer trigger button + events demo.
+ * --------------------------------------------------------------------------- */
+
+.trigger-btn {
+  appearance: none;
+  border: 0;
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 9999px;
+  background: var(--accent);
+  color: var(--accent-fg);
+  cursor: pointer;
+  transition: opacity 150ms ease;
+}
+
+.trigger-btn:hover {
+  opacity: 0.92;
+}
+
+.events-demo {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  align-items: center;
+}
+
+.events-log {
+  width: 100%;
+  max-width: 26rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.75rem;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace;
+  background: var(--card);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.events-log strong {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  font-size: 0.6875rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.25rem;
+}
+
+.events-log-empty {
+  color: var(--muted);
+}
+
+.events-log-line {
+  color: var(--fg);
+  word-break: break-all;
+}
+
+/* ---------------------------------------------------------------------------
+ * Footer.
+ * --------------------------------------------------------------------------- */
+
+.page-footer {
+  border-top: 1px solid var(--border);
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
