@@ -749,6 +749,51 @@
 }
 
 /* ---------------------------------------------------------------------------
+ * Amount preset chips.
+ * --------------------------------------------------------------------------- */
+
+.pl-presets {
+  display: flex;
+  gap: 0.375rem;
+  flex-wrap: nowrap;
+}
+
+.pl-preset-btn {
+  appearance: none;
+  border: 1px solid var(--paylater-border);
+  border-radius: 9999px;
+  background: color-mix(in oklch, var(--paylater-card) 80%, transparent);
+  color: var(--paylater-muted);
+  font: inherit;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  padding: 0.3rem 0.5rem;
+  cursor: pointer;
+  flex: 1 1 0;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease,
+    color 120ms ease;
+}
+
+.pl-preset-btn:hover {
+  border-color: var(--paylater-primary);
+  color: var(--paylater-primary);
+  background: color-mix(in oklch, var(--paylater-primary) 8%, transparent);
+}
+
+.pl-preset-btn--active {
+  border-color: var(--paylater-primary);
+  background: color-mix(in oklch, var(--paylater-primary) 14%, transparent);
+  color: var(--paylater-primary);
+}
+
+/* ---------------------------------------------------------------------------
  * Summary box (delivery/sign/done).
  * --------------------------------------------------------------------------- */
 

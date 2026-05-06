@@ -276,6 +276,28 @@ export function BnplFlow({
                 onChange={(e) => setAmount(Number(e.target.value))}
                 aria-label="Amount"
               />
+              <div className="pl-presets" role="group" aria-label="Preset amounts">
+                {(() => {
+                  const { minAmount, maxAmount, step } = country;
+
+                  const range = maxAmount - minAmount;
+                  const raw = [0.2, 0.4, 0.65, 1].map(
+                    (f) => Math.round((minAmount + range * f) / step) * step,
+                  );
+                  const presets = [...new Set(raw)].filter((v) => v >= minAmount && v <= maxAmount);
+
+                  return presets.map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      className={`pl-preset-btn${amount === preset ? " pl-preset-btn--active" : ""}`}
+                      onClick={() => setAmount(preset)}
+                    >
+                      {formatMoney(country, preset)}
+                    </button>
+                  ));
+                })()}
+              </div>
             </div>
 
             <div className="pl-usdt-pill">
