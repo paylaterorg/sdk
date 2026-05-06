@@ -8,9 +8,8 @@
  * on the left of each case really is what the right-hand widget runs.
  */
 
-import type { WidgetInstance } from "@paylater/sdk";
 import { PayLaterWidget } from "@paylater/sdk/react";
-import { useRef, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 const TEST_KEY = "pk_test_demo";
 
@@ -23,33 +22,6 @@ export interface Case {
   description: string;
   code: string;
   Demo: () => ReactNode;
-}
-
-/* -------------------------------------------------------------------------- */
-/* Helpers                                                                    */
-/* -------------------------------------------------------------------------- */
-
-/**
- * @dev Trigger button + ref-controlled widget for modal / drawer positions.
- * Both positions render nothing until `widget.open()` is called.
- */
-function ButtonTrigger({
-  position,
-  label,
-}: {
-  position: "modal" | "drawer";
-  label: string;
-}): ReactNode {
-  const ref = useRef<WidgetInstance>(null);
-
-  return (
-    <>
-      <button type="button" className="trigger-btn" onClick={() => ref.current?.open()}>
-        {label}
-      </button>
-      <PayLaterWidget ref={ref} apiKey={TEST_KEY} position={position} />
-    </>
-  );
 }
 
 /* -------------------------------------------------------------------------- */
@@ -75,50 +47,6 @@ export const CASES: Case[] = [
   position="inline-popup"
 />`,
     Demo: () => <PayLaterWidget apiKey={TEST_KEY} position="inline-popup" />,
-  },
-  {
-    id: "modal",
-    title: 'Modal (`position: "modal"`)',
-    description:
-      "Entire flow is hidden until the partner calls `widget.open()` — typically from a CTA button on the host page. Centered overlay on the viewport.",
-    code: `function Checkout() {
-  const ref = useRef<WidgetInstance>(null);
-  return (
-    <>
-      <button onClick={() => ref.current?.open()}>
-        Open checkout
-      </button>
-      <PayLaterWidget
-        ref={ref}
-        apiKey="pk_test_demo"
-        position="modal"
-      />
-    </>
-  );
-}`,
-    Demo: () => <ButtonTrigger position="modal" label="Open checkout" />,
-  },
-  {
-    id: "drawer",
-    title: 'Drawer (`position: "drawer"`)',
-    description:
-      "Same as modal, but the flow slides in from the right edge of the viewport. Better for desktop side-panel checkout patterns.",
-    code: `function Checkout() {
-  const ref = useRef<WidgetInstance>(null);
-  return (
-    <>
-      <button onClick={() => ref.current?.open()}>
-        Open drawer
-      </button>
-      <PayLaterWidget
-        ref={ref}
-        apiKey="pk_test_demo"
-        position="drawer"
-      />
-    </>
-  );
-}`,
-    Demo: () => <ButtonTrigger position="drawer" label="Open drawer" />,
   },
   {
     id: "country-preset",

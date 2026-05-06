@@ -366,26 +366,8 @@ p {
 }
 
 /* ---------------------------------------------------------------------------
- * Modal/drawer trigger button + events demo.
+ * Events demo — inline activity log next to the widget.
  * --------------------------------------------------------------------------- */
-
-.trigger-btn {
-  appearance: none;
-  border: 0;
-  font: inherit;
-  font-weight: 600;
-  font-size: 0.9375rem;
-  padding: 0.75rem 1.5rem;
-  border-radius: 9999px;
-  background: var(--accent);
-  color: var(--accent-fg);
-  cursor: pointer;
-  transition: opacity 150ms ease;
-}
-
-.trigger-btn:hover {
-  opacity: 0.92;
-}
 
 .events-demo {
   display: flex;

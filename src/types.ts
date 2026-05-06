@@ -47,13 +47,8 @@ export type Product = "bnpl_30d";
  *   "Continuing in popup" placeholder where the inline tile was. This is
  *   the marketing-site UX — efficient for landing pages where the inline
  *   tile is just a teaser.
- * - `"modal"` — entire flow lives in a centered popup. The widget is hidden
- *   until `widget.open()` is called explicitly (typically from a CTA button
- *   on the host page).
- * - `"drawer"` — entire flow lives in a right-side drawer. Hidden until
- *   `widget.open()`.
  */
-export type Position = "inline" | "inline-popup" | "modal" | "drawer";
+export type Position = "inline" | "inline-popup";
 
 /**
  * @dev Color-scheme mode the widget renders in.
@@ -311,7 +306,7 @@ export interface CloseEvent {
 export interface EventHandlers {
   success?: (event: SuccessEvent) => void; // Fires when the customer successfully signs the credit agreement.
   error?: (event: ErrorEvent) => void; // Fires when an unrecoverable error stops the flow.
-  close?: (event: CloseEvent) => void; // Fires when the widget is dismissed (modal/drawer) or unmounted.
+  close?: (event: CloseEvent) => void; // Fires when the widget is unmounted (`abandoned: true` if the customer left mid-flow).
   ready?: () => void; // Fires once when the widget has mounted and is ready to interact.
 
   /**
@@ -333,7 +328,7 @@ export interface PayLaterOptions {
   product?: Product; // Product variant. Currently only `"bnpl_30d"`.
   asset?: Asset; // Asset variant. Currently only `"usdt"`.
   theme?: ThemeOptions; // Theme tokens. Merged over the brand defaults.
-  position?: Position; // How the widget renders. Inline (default), Inline-Popup, Modal, or Drawer.
+  position?: Position; // How the widget renders. Inline (default) or Inline-Popup.
   locale?: Locale; // Locale for the widget UI. Falls back to the customer's detected country.
   country?: CountryCode; // Pre-select a country at mount time. The customer can still change it.
   amount?: number; // Pre-fill the amount slider in local currency. Clamped to the country's range.
@@ -386,8 +381,6 @@ export interface PayLaterOptions {
 export interface WidgetInstance {
   mount(target: string | HTMLElement): WidgetInstance; // Mount the widget at the given target. Returns the same instance for chaining.
   unmount(): void; // Remove the widget from the DOM and detach all listeners.
-  open(): void; // Open the widget (modal/drawer position only — inline and inline-popup are always open).
-  close(): void; // Close the widget (modal/drawer position only).
 
   /**
    * Update options on the fly. Reactive options (theme, prefill, lock, hide,

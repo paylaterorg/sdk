@@ -2,9 +2,11 @@
  * @dev WidgetInstance factory.
  *
  * Owns the lifecycle of a single rendered widget: shadow root attach, React
- * render, option mutations, modal/drawer open/close, and clean teardown.
+ * render, option mutations, and clean teardown. Both supported positions
+ * (`inline` and `inline-popup`) render immediately at the mount target —
+ * there is no hidden / open state to toggle.
  *
- * The consumer-facing surface is intentionally small — `init` returns one of
+ * The consumer-facing surface is intentionally small: `init` returns one of
  * these instances, the consumer calls `mount` once, and everything else is
  * either reactive (theme/handlers) or terminal (unmount).
  */
@@ -42,9 +44,9 @@ const DEFAULT_OPTIONS = {
 /**
  * @dev Internal book-keeping for a single widget instance. The factory holds
  * exactly one of these in closure scope and mutates it directly — every
- * exposed method (mount / unmount / open / close / update) reads or writes
- * a field here. Nullable references are populated on `mount` and reset to
- * `null` on `unmount`, which lets `mounted` be a single source of truth.
+ * exposed method (mount / unmount / update) reads or writes a field here.
+ * Nullable references are populated on `mount` and reset to `null` on
+ * `unmount`, which lets `mounted` be a single source of truth.
  */
 interface InternalState {
   options: PayLaterOptions; // The merged options driving this instance (defaults applied).
@@ -68,14 +70,13 @@ interface InternalState {
   reactRoot: Root | null; // The React 18 root rendering into `container`.
   phase: WidgetInstance["phase"]; // Cached phase so `instance.phase` is a synchronous read.
   mounted: boolean; // True between successful `mount()` and `unmount()`.
-  open: boolean; // For modal/drawer: whether the overlay is currently visible. Inline-like positions ignore it.
 }
 
 /**
  * @title createWidget
  * @description Factory function that creates and manages a PayLater widget instance.
  * @param {PayLaterOptions} initialOptions - The initial configuration options for the widget.
- * @returns {WidgetInstance} A WidgetInstance that can be mounted, updated, opened, closed, and unmounted.
+ * @returns {WidgetInstance} A WidgetInstance that can be mounted, updated, and unmounted.
  * @throws Will throw an error if required options are missing or invalid.
  */
 export function createWidget(initialOptions: PayLaterOptions): WidgetInstance {
@@ -92,7 +93,6 @@ export function createWidget(initialOptions: PayLaterOptions): WidgetInstance {
     reactRoot: null,
     phase: "amount",
     mounted: false,
-    open: _isInlineLike(initialOptions.position ?? "inline"),
   };
 
   function render() {
@@ -101,16 +101,10 @@ export function createWidget(initialOptions: PayLaterOptions): WidgetInstance {
     state.reactRoot.render(
       createElement(Widget, {
         options: state.options,
-        open: state.open,
         portalContainer: state.portalContainer,
         onPhaseChange: (next) => {
           state.phase = next;
           state.options.on?.phaseChange?.(next);
-        },
-        onClose: (event) => {
-          state.open = false;
-          state.options.on?.close?.(event);
-          render();
         },
       }),
     );
@@ -158,7 +152,6 @@ export function createWidget(initialOptions: PayLaterOptions): WidgetInstance {
       state.portalContainer = portalContainer;
       state.reactRoot = createRoot(container);
       state.mounted = true;
-      state.open = _isInlineLike(state.options.position);
 
       render();
 
@@ -188,24 +181,6 @@ export function createWidget(initialOptions: PayLaterOptions): WidgetInstance {
       state.portalShadow = null;
       state.portalHost = null;
       state.mounted = false;
-      state.open = false;
-    },
-    open() {
-      if (_isInlineLike(state.options.position)) return;
-      state.open = true;
-
-      render();
-    },
-    close() {
-      if (_isInlineLike(state.options.position)) return;
-      state.open = false;
-
-      render();
-
-      state.options.on?.close?.({
-        abandoned: state.phase !== "done",
-        phase: state.phase,
-      });
     },
     update(patch) {
       state.options = _mergeDefaults({ ...state.options, ...patch });
@@ -341,14 +316,4 @@ function _hasFieldValue(
     default:
       return false;
   }
-}
-
-/**
- * @dev `inline` and `inline-popup` are both rendered immediately at the mount
- * target — `state.open` is true by default and `open()` / `close()` are no-ops
- * because there's no overlay shell to toggle. Modal and drawer positions are
- * the opposite: hidden until the consumer calls `open()`.
- */
-function _isInlineLike(position: PayLaterOptions["position"] | undefined): boolean {
-  return position === "inline" || position === "inline-popup" || position === undefined;
 }

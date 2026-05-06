@@ -240,7 +240,7 @@
 }
 
 /* ---------------------------------------------------------------------------
- * Overlay surfaces (modal/drawer + popup-after-amount).
+ * Overlay surface — popup-after-amount for `position: "inline-popup"`.
  * --------------------------------------------------------------------------- */
 
 .pl-overlay {
@@ -254,18 +254,6 @@
   padding: 1rem;
   z-index: 999999;
   animation: pl-fade-in 200ms ease-out;
-}
-
-.pl-drawer-overlay {
-  align-items: stretch;
-  justify-content: flex-end;
-}
-
-.pl-drawer-overlay > .pl-tile {
-  max-width: 28rem;
-  border-radius: calc(var(--paylater-radius) * 2) 0 0 calc(var(--paylater-radius) * 2);
-  height: 100%;
-  animation: pl-slide-in-right 220ms ease-out;
 }
 
 .pl-overlay > .pl-tile {
@@ -292,15 +280,6 @@
   }
 }
 
-@keyframes pl-slide-in-right {
-  from {
-    transform: translateX(100%);
-  }
-  to {
-    transform: translateX(0);
-  }
-}
-
 @keyframes pl-fade-in-up {
   from {
     opacity: 0;
@@ -321,7 +300,6 @@
 @media (prefers-reduced-motion: reduce) {
   .pl-overlay,
   .pl-overlay > .pl-tile,
-  .pl-drawer-overlay > .pl-tile,
   [data-pl-phase] {
     animation: none !important;
   }

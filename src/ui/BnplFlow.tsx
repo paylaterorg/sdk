@@ -46,9 +46,9 @@ export type SignPhase = "idle" | "scan" | "scanned" | "signing" | "verified";
  * @dev Props the BnplFlow component accepts.
  *
  * `onSuccess` / `onError` / `onPhaseChange` are forwarded from the consumer's
- * `EventHandlers`. `onDismiss` is wired by the Widget shell only for
- * modal/drawer positions — its presence tells BnplFlow not to render its own
- * popup-after-amount overlay (the shell already is one).
+ * `EventHandlers`. `portalContainer` is the body-attached shadow root the
+ * factory in `widget.ts` created so the popup-after-amount overlay can
+ * escape transformed ancestors of the mount target.
  */
 export interface BnplFlowProps {
   options: PayLaterOptions; // The merged options PayLater.init() produced.
@@ -63,26 +63,18 @@ export interface BnplFlowProps {
    * `position: fixed` into a containing-block-scoped position.
    */
   portalContainer?: HTMLElement | null;
-
-  /**
-   * Provided by the Widget shell when this flow is rendered inside a
-   * modal/drawer overlay. When present, the popup-after-amount behaviour is
-   * suppressed (the shell is already an overlay).
-   */
-  onDismiss?: () => void;
 }
 
 /**
  * @title BnplFlow
- * @description Multi-phase Buy-Now-Pay-Later flow rendered inside the SDK's Shadow Root. Hosts all phase state (amount, country, network, wallet, email, sign sub-phase, reference, due date) so swapping between inline tile and popup overlay never remounts the form.
+ * @description Multi-phase Buy-Now-Pay-Later flow rendered inside the SDK's Shadow Root. Hosts all phase state (amount, country, network, wallet, email, sign sub-phase, reference, due date). For `position: "inline-popup"`, the post-amount phases render as a viewport-centered overlay portaled into the body-attached shadow root.
  * @param {BnplFlowProps} props - See {@link BnplFlowProps}.
- * @returns {JSX.Element} Either the bare tile (inline / non-popup positions) or a placeholder + overlay pair (inline-popup with phase past amount).
+ * @returns {JSX.Element} Either the bare tile (`inline`) or a placeholder + portaled overlay pair (`inline-popup` past amount).
  */
 export function BnplFlow({
   options,
   onPhaseChange,
   onSuccess,
-  onDismiss,
   portalContainer,
 }: BnplFlowProps): JSX.Element {
   const initialCountry: CountryCode = options.country ?? "SE";
@@ -211,7 +203,7 @@ export function BnplFlow({
   };
 
   const position = options.position ?? "inline";
-  const showAsOverlay = position === "inline-popup" && phase !== "amount" && !onDismiss;
+  const showAsOverlay = position === "inline-popup" && phase !== "amount";
 
   const tile = (
     <div className="pl-tile">
@@ -234,19 +226,8 @@ export function BnplFlow({
             {country.currency}
             {countryUnlocked && <ChevronDownIcon />}
           </button>
-          {(onDismiss || showAsOverlay) && (
-            <button
-              type="button"
-              className="pl-close"
-              onClick={() => {
-                if (showAsOverlay) {
-                  reset();
-                } else {
-                  onDismiss?.();
-                }
-              }}
-              aria-label="Close PayLater"
-            >
+          {showAsOverlay && (
+            <button type="button" className="pl-close" onClick={reset} aria-label="Close PayLater">
               <CloseIcon />
             </button>
           )}

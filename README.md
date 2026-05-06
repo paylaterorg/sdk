@@ -44,7 +44,7 @@ const widget = PayLater.init({
     mode: "auto", // "light" | "dark" | "auto"
   },
 
-  position: "inline", // "inline" | "inline-popup" | "modal" | "drawer"
+  position: "inline", // "inline" | "inline-popup"
   locale: "en-SE",
 
   on: {
@@ -154,7 +154,7 @@ Returns a `WidgetInstance`. Call `mount()` on the result.
 | `product`   | `"bnpl_30d"`                                                   | `"bnpl_30d"`               | Only one product variant for now                                                                                                       |
 | `asset`     | `"usdt"`                                                       | `"usdt"`                   | Only one asset variant for now                                                                                                         |
 | `theme`     | `ThemeOptions`                                                 | brand defaults             | See below                                                                                                                              |
-| `position`  | `"inline" \| "inline-popup" \| "modal" \| "drawer"`            | `"inline"`                 | See "Position modes" below. Modal + drawer require explicit `widget.open()`                                                            |
+| `position`  | `"inline" \| "inline-popup"`                                   | `"inline"`                 | See "Position modes" below.                                                                                                            |
 | `locale`    | BCP-47 string                                                  | auto-detected              | Falls back to country default                                                                                                          |
 | `country`   | `"SE" \| "NO" \| "FI" \| "DK" \| "DE" \| "FR" \| "NL" \| "GB"` | auto-detected              | Pre-select; user can change unless `lock` includes `"country"`                                                                         |
 | `amount`    | `number`                                                       | country min                | Pre-fill the amount slider in local currency                                                                                           |
@@ -173,8 +173,6 @@ How the widget renders relative to its mount target.
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `"inline"`       | Entire flow stays in one tile at the mount target. Every phase (amount → delivery → sign → done) renders in the same card. No page-level overlay. Use this for dedicated checkout pages.                  |
 | `"inline-popup"` | Amount step renders inline at the mount target. When the customer clicks Continue, the rest of the flow pops up as a viewport-centered overlay. Best for landing pages where the inline tile is a teaser. |
-| `"modal"`        | Entire flow opens as a centered popup. Hidden until you call `widget.open()` from a CTA on your page.                                                                                                     |
-| `"drawer"`       | Entire flow opens as a right-side drawer. Hidden until you call `widget.open()`.                                                                                                                          |
 
 ### `PrefillOptions`
 
@@ -266,8 +264,6 @@ The object returned by `init()`.
 | --------------- | ---------------------------------------------------------------------------------- |
 | `mount(target)` | Mount at a CSS selector or `HTMLElement`. Idempotent.                              |
 | `unmount()`     | Detach + clean up. Fires `close` with `abandoned: true` if mid-flow.               |
-| `open()`        | Modal/drawer only — open the overlay                                               |
-| `close()`       | Modal/drawer only — close the overlay                                              |
 | `update(opts)`  | Patch options on the fly. Theme + handlers are reactive; everything else remounts. |
 | `phase`         | Current phase (read-only)                                                          |
 | `mounted`       | Whether the widget is currently mounted (read-only)                                |
@@ -304,7 +300,7 @@ npm run dev
 
 Vite serves it on `http://localhost:5174`. Toggle the host-page theme at the top of the page to see every widget set to `mode: "auto"` flip in lockstep.
 
-The showcase covers: every position mode (inline / inline-popup / modal / drawer), country presets and locks, prefilled / hidden / locked fields, both custody modes (off-chain + on-chain), per-mode brand themes, forced light/dark mode, custom radius and font family, and an event-handlers panel that surfaces the `success` / `phaseChange` payloads inline.
+The showcase covers: both position modes (inline / inline-popup), country presets and locks, prefilled / hidden / locked fields, both custody modes (off-chain + on-chain), per-mode brand themes, forced light/dark mode, custom radius and font family, and an event-handlers panel that surfaces the `success` / `phaseChange` payloads inline.
 
 There are also two minimal entry points if you just want a single file to copy:
 

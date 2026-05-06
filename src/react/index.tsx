@@ -28,7 +28,7 @@ export interface PayLaterWidgetProps extends Omit<PayLaterOptions, "on"> {
   className?: string; // Optional className applied to the host `div`.
   onSuccess?: (event: SuccessEvent) => void; // Fires when the customer successfully signs.
   onError?: (event: ErrorEvent) => void; // Fires when an unrecoverable error stops the flow.
-  onClose?: (event: CloseEvent) => void; // Fires when the widget is dismissed (modal/drawer) or unmounted.
+  onClose?: (event: CloseEvent) => void; // Fires when the widget is unmounted (`abandoned: true` if the customer left mid-flow).
   onReady?: () => void; // Fires once the widget is mounted and ready to interact.
   onPhaseChange?: (phase: "amount" | "delivery" | "sign" | "done") => void; // Fires whenever the customer changes phase.
 }
