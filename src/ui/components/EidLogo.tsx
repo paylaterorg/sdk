@@ -8,7 +8,7 @@
  * restrictions and would balloon the bundle.
  */
 
-import type { JSX } from "react";
+import { memo, type JSX } from "react";
 import type { CountryCode } from "../../types";
 
 /**
@@ -35,7 +35,7 @@ const EID_DOMAIN: Record<CountryCode, string> = {
  * @param {number} [props.size] - Pixel width and height. Defaults to 18.
  * @returns {JSX.Element | null} An `<img>` tag, or `null` if the country isn't supported.
  */
-export function EidLogo({
+export const EidLogo = memo(function EidLogo({
   country,
   size = 18,
 }: {
@@ -63,4 +63,4 @@ export function EidLogo({
       }}
     />
   );
-}
+});

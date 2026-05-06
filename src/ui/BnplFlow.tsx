@@ -3,7 +3,7 @@
  * Shadow Root.
  */
 
-import { useEffect, useState, type JSX } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState, type JSX } from "react";
 import { createPortal } from "react-dom";
 import { COUNTRIES } from "../lib/countries";
 import { convertAmount, formatMoney, toUsdt } from "../lib/format";
@@ -27,7 +27,7 @@ import type {
   PayLaterOptions,
   SuccessEvent,
 } from "../types";
-import { CountryPicker, EidLogo, NetworkSelect, PhaseDots, SignOverlay } from "./components";
+import { EidLogo, PhaseDots } from "./components";
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
@@ -39,6 +39,29 @@ import {
   PayLaterLogo,
   ShieldIcon,
 } from "./icons";
+
+/**
+ * @dev Lazy-loaded heavy subcomponents. Each pulls a chunk that's only
+ * needed at a specific phase, so the initial parse cost stays minimal:
+ *
+ * - `NetworkSelect` brings in `@web3icons/react` (~12KB of branded chain
+ *   SVGs) — only relevant during the delivery phase.
+ * - `SignOverlay` brings in `qrcode` (~30KB of QR encoder) — only
+ *   relevant during the sign phase.
+ * - `CountryPicker` is rarely opened; lazy-loading keeps mount cost low.
+ *
+ * `tsup` is configured with `splitting: true`, so these become real
+ * separate chunks at consumer-bundle time.
+ */
+const NetworkSelect = lazy(() =>
+  import("./components/NetworkSelect").then((m) => ({ default: m.NetworkSelect })),
+);
+const SignOverlay = lazy(() =>
+  import("./components/SignOverlay").then((m) => ({ default: m.SignOverlay })),
+);
+const CountryPicker = lazy(() =>
+  import("./components/CountryPicker").then((m) => ({ default: m.CountryPicker })),
+);
 
 const AMOUNT_PRESETS: Record<Currency, number[]> = {
   SEK: [500, 1000, 2500, 5000],
@@ -102,8 +125,10 @@ export function BnplFlow({
 }: BnplFlowProps): JSX.Element {
   const initialCountry: CountryCode = options.country ?? "SE";
   const merchantCustody = options.custody?.mode === "merchant";
-  const hide = new Set(options.hide ?? []);
-  const lock = new Set(options.lock ?? []);
+
+  const hide = useMemo(() => new Set(options.hide ?? []), [options.hide]);
+  const lock = useMemo(() => new Set(options.lock ?? []), [options.lock]);
+
   const showWalletField = !merchantCustody && !hide.has("walletAddress");
   const showNetworkField = !merchantCustody && !hide.has("network");
   const showEmailField = !hide.has("email");
@@ -382,7 +407,9 @@ export function BnplFlow({
                 <label className="pl-label" htmlFor="pl-network">
                   Network
                 </label>
-                <NetworkSelect value={network} onChange={setNetwork} disabled={networkLocked} />
+                <Suspense fallback={null}>
+                  <NetworkSelect value={network} onChange={setNetwork} disabled={networkLocked} />
+                </Suspense>
               </div>
             )}
 
@@ -531,7 +558,9 @@ export function BnplFlow({
         )}
 
         {phase === "sign" && signPhase !== "idle" && (
-          <SignOverlay phase={signPhase} country={country} reference={reference} />
+          <Suspense fallback={null}>
+            <SignOverlay phase={signPhase} country={country} reference={reference} />
+          </Suspense>
         )}
 
         {phase === "done" && (
@@ -617,19 +646,21 @@ export function BnplFlow({
       </footer>
 
       {countryPickerOpen && (
-        <CountryPicker
-          current={countryCode}
-          onPick={(code) => {
-            // Convert the slider's amount into the new market's currency at
-            // pick time so the user keeps roughly the same purchasing power
-            // when they swap markets mid-flow.
-            const next = COUNTRIES[code];
-            setAmount(convertAmount(country, next, amount));
-            setCountryCode(code);
-            setCountryPickerOpen(false);
-          }}
-          onClose={() => setCountryPickerOpen(false)}
-        />
+        <Suspense fallback={null}>
+          <CountryPicker
+            current={countryCode}
+            onPick={(code) => {
+              // Convert the slider's amount into the new market's currency at
+              // pick time so the user keeps roughly the same purchasing power
+              // when they swap markets mid-flow.
+              const next = COUNTRIES[code];
+              setAmount(convertAmount(country, next, amount));
+              setCountryCode(code);
+              setCountryPickerOpen(false);
+            }}
+            onClose={() => setCountryPickerOpen(false)}
+          />
+        </Suspense>
       )}
     </div>
   );
