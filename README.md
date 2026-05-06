@@ -4,7 +4,7 @@
 
 Drop-in widget that lets your customers buy USDT and settle the bill within 30 days, signed with their national eID. Free for partner platforms — PayLater is compensated on the consumer side. No card-network exposure, no chargeback risk on your books.
 
-[paylater.dev](https://paylater.dev) · [Get sandbox keys](https://paylater.dev) · [Talk to partners](mailto:partners@paylater.dev)
+[paylater.dev](https://paylater.dev) · [Get sandbox keys](https://paylater.dev) · [Contact us](mailto:contact@paylater.dev)
 
 ---
 
