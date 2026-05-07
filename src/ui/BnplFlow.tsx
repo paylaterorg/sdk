@@ -370,8 +370,14 @@ export function BnplFlow({
                       // separators. Lets the partner's customer type a custom
                       // amount that doesn't snap to country.step (e.g. 51 EUR).
                       const digits = e.target.value.replace(/\D/g, "").slice(0, 7);
+                      if (digits === "") {
+                        setAmount(0);
+                        return;
+                      }
 
-                      setAmount(digits === "" ? 0 : Number(digits));
+                      // Cap at max during typing so the user can never enter a
+                      // value above the country's ceiling. Min is handled in onBlur so the user can type a number below the min (e.g. 20 EUR) and then blur to have it snap up to the floor.
+                      setAmount(Math.min(country.maxAmount, Number(digits)));
                     }}
                     onBlur={() => {
                       if (amount > 0 && amount < country.minAmount) setAmount(country.minAmount);

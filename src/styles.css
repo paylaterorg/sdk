@@ -349,10 +349,8 @@
 }
 
 .pl-amount:focus-within {
-  background: color-mix(in oklch, var(--paylater-primary) 12%, transparent);
-  box-shadow:
-    0 0 0 1.5px var(--paylater-primary),
-    0 0 0 5px color-mix(in oklch, var(--paylater-primary) 18%, transparent);
+  background: color-mix(in oklch, var(--paylater-primary) 10%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--paylater-primary) 45%, transparent);
 }
 
 .pl-amount-symbol {
