@@ -86,7 +86,6 @@ function PayLaterWidgetImpl(
       hide: props.hide,
       lock: props.lock,
       custody: props.custody,
-      apiOrigin: props.apiOrigin,
       on: {
         success: (event) => handlersRef.current.onSuccess?.(event),
         error: (event) => handlersRef.current.onError?.(event),
@@ -123,6 +122,33 @@ function PayLaterWidgetImpl(
     props.theme?.radius,
     props.theme?.mode,
     props.theme?.fontFamily,
+  ]);
+
+  // Propagate the rest of the reactive options (country, amount, prefill,
+  // hide, lock, custody) so consumers can drive them from React state. The
+  // underlying widget syncs these into its internal state on each update.
+  useEffect(() => {
+    if (!instanceRef.current) return;
+
+    instanceRef.current.update({
+      country: props.country,
+      amount: props.amount,
+      prefill: props.prefill,
+      hide: props.hide,
+      lock: props.lock,
+      custody: props.custody,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    props.country,
+    props.amount,
+    props.prefill?.email,
+    props.prefill?.walletAddress,
+    props.prefill?.network,
+    props.prefill?.fullName,
+    props.hide,
+    props.lock,
+    props.custody,
   ]);
 
   // The factory only runs after mount commits, by which time `instanceRef.current`

@@ -3,7 +3,7 @@
  * Shadow Root.
  */
 
-import { lazy, Suspense, useEffect, useMemo, useState, type JSX } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type JSX } from "react";
 import { createPortal } from "react-dom";
 import { COUNTRIES } from "../lib/countries";
 import { convertAmount, formatMoney, toUsdt } from "../lib/format";
@@ -54,6 +54,19 @@ const NetworkSelect = lazy(() =>
 const SignOverlay = lazy(() =>
   import("./components/SignOverlay").then((m) => ({ default: m.SignOverlay })),
 );
+
+/**
+ * @dev Module-level scroll-lock state.
+ *
+ * Multiple `inline-popup` widgets on the same page would clobber each other's
+ * `body.style.overflow` snapshots if they each tracked it independently.
+ * Counting active overlays here means we lock once on the first overlay's
+ * mount and unlock once when the last overlay unmounts — restoring whatever
+ * value the host page had set before the first lock.
+ */
+let _scrollLockCount = 0;
+let _scrollLockPrevBody = "";
+let _scrollLockPrevHtml = "";
 
 const AMOUNT_PRESETS: Record<Currency, number[]> = {
   SEK: [500, 1000, 2500, 5000],
@@ -169,6 +182,48 @@ export function BnplFlow({
     onPhaseChange(next);
   };
 
+  // Reactive option propagation. Local state is initialised lazily from
+  // `options.*` once at mount; if the partner calls `instance.update({ ... })`
+  // afterwards, we want the new value to land in the corresponding piece of
+  // state. The React-recommended pattern is to track the previous prop value
+  // and adjust state during render — this avoids cascading effects and
+  // keeps the update synchronous with the prop change.
+  const [prevOptionAmount, setPrevOptionAmount] = useState(options.amount);
+  if (options.amount !== prevOptionAmount) {
+    setPrevOptionAmount(options.amount);
+
+    if (typeof options.amount === "number") {
+      const next = COUNTRIES[countryCode];
+      setAmount(Math.max(next.minAmount, Math.min(next.maxAmount, options.amount)));
+    }
+  }
+
+  const [prevOptionCountry, setPrevOptionCountry] = useState(options.country);
+  if (options.country !== prevOptionCountry) {
+    setPrevOptionCountry(options.country);
+    if (options.country) setCountryCode(options.country);
+  }
+
+  const [prevOptionEmail, setPrevOptionEmail] = useState(options.prefill?.email);
+  if (options.prefill?.email !== prevOptionEmail) {
+    setPrevOptionEmail(options.prefill?.email);
+    if (options.prefill?.email !== undefined) setEmail(options.prefill.email);
+  }
+
+  const [prevOptionWallet, setPrevOptionWallet] = useState(options.prefill?.walletAddress);
+  if (options.prefill?.walletAddress !== prevOptionWallet) {
+    setPrevOptionWallet(options.prefill?.walletAddress);
+
+    if (options.prefill?.walletAddress !== undefined)
+      setWalletAddress(options.prefill.walletAddress);
+  }
+
+  const [prevOptionNetwork, setPrevOptionNetwork] = useState(options.prefill?.network);
+  if (options.prefill?.network !== prevOptionNetwork) {
+    setPrevOptionNetwork(options.prefill?.network);
+    if (options.prefill?.network) setNetwork(options.prefill.network);
+  }
+
   const usdt = toUsdt(country, amount);
   const amountValid = amount >= country.minAmount && amount <= country.maxAmount;
 
@@ -213,6 +268,36 @@ export function BnplFlow({
   // mid-flow.
   const countryUnlocked = countryEditable && (phase === "amount" || phase === "delivery");
 
+  // Latest-values ref so the sign-phase verified callback always reads fresh
+  // state without the effect needing to re-run (and the timer chain to be
+  // torn down) on every state change. Refreshed in an effect after every
+  // commit — the timer fires hundreds of milliseconds later, well after the
+  // commit-time refresh has run.
+  const signCtxRef = useRef({
+    walletAddress,
+    network,
+    reference,
+    usdt,
+    amount,
+    countryCode,
+    merchantCustody,
+    options,
+    onSuccess,
+  });
+  useEffect(() => {
+    signCtxRef.current = {
+      walletAddress,
+      network,
+      reference,
+      usdt,
+      amount,
+      countryCode,
+      merchantCustody,
+      options,
+      onSuccess,
+    };
+  });
+
   // Sign phase auto-advance machine.
   useEffect(() => {
     if (signPhase === "idle") return;
@@ -235,33 +320,39 @@ export function BnplFlow({
     if (signPhase === "signing") return wait(1600, () => setSignPhase("verified"));
     if (signPhase === "verified")
       return wait(900, () => {
+        const ctx = signCtxRef.current;
+
         const merchantSettlementAddress =
-          options.custody?.mode === "merchant" ? options.custody.settlementAddress : undefined;
+          ctx.options.custody?.mode === "merchant"
+            ? ctx.options.custody.settlementAddress
+            : undefined;
         const merchantSettlementNetwork =
-          options.custody?.mode === "merchant" ? options.custody.settlementNetwork : undefined;
-        const recipient = merchantCustody
+          ctx.options.custody?.mode === "merchant"
+            ? ctx.options.custody.settlementNetwork
+            : undefined;
+        const recipient = ctx.merchantCustody
           ? (merchantSettlementAddress ?? null)
-          : walletAddress.trim() || options.prefill?.walletAddress || null;
-        const settledNetwork: Network = merchantCustody
-          ? (merchantSettlementNetwork ?? options.prefill?.network ?? network)
-          : network;
+          : ctx.walletAddress.trim() || ctx.options.prefill?.walletAddress || null;
+        const settledNetwork: Network = ctx.merchantCustody
+          ? (merchantSettlementNetwork ?? ctx.options.prefill?.network ?? ctx.network)
+          : ctx.network;
 
         const event: SuccessEvent = {
-          ref: reference,
+          ref: ctx.reference,
           network: settledNetwork,
-          usdt,
-          amount,
-          country: initialCountry,
-          custody: merchantCustody ? "merchant" : "self",
+          usdt: ctx.usdt,
+          amount: ctx.amount,
+          country: ctx.countryCode,
+          custody: ctx.merchantCustody ? "merchant" : "self",
           recipient,
-          ...(merchantCustody && options.custody?.mode === "merchant"
-            ? { merchantUserId: options.custody.merchantUserId }
+          ...(ctx.merchantCustody && ctx.options.custody?.mode === "merchant"
+            ? { merchantUserId: ctx.options.custody.merchantUserId }
             : {}),
         };
 
         setSignPhase("idle");
         setPhase("done");
-        onSuccess(event);
+        ctx.onSuccess(event);
       });
   }, [signPhase]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -272,38 +363,64 @@ export function BnplFlow({
     setDueDate(thirtyDaysFromNow());
   };
 
+  // User-initiated close (X button or backdrop click). Fires the partner's
+  // `on.close` with `abandoned: true` whenever the customer leaves mid-flow,
+  // mirroring what `unmount()` would emit. "Run again" from the done view
+  // uses plain `reset()` because that's a re-entry, not an abandonment.
+  const dismiss = () => {
+    options.on?.close?.({ abandoned: phase !== "done", phase });
+    reset();
+  };
+
   // Partners that have already KYC'd the customer can pre-resolve the
   // verified name via `prefill.fullName`. The eID provider is still the
   // source of truth in production — this just controls what we display.
-  const verifiedName = options.prefill?.fullName ?? MOCK_NAMES[initialCountry];
-  const verifiedId = MOCK_ID_NUMBERS[initialCountry];
+  const verifiedName = options.prefill?.fullName ?? MOCK_NAMES[countryCode];
+  const verifiedId = MOCK_ID_NUMBERS[countryCode];
 
   const [copied, setCopied] = useState(false);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copyReference = () => {
     navigator.clipboard?.writeText(reference);
     setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    copyTimeoutRef.current = setTimeout(() => {
+      setCopied(false);
+      copyTimeoutRef.current = null;
+    }, 1500);
   };
+  useEffect(
+    () => () => {
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    },
+    [],
+  );
 
   const position = options.position ?? "inline";
   const showAsOverlay = position === "inline-popup" && phase !== "amount";
 
   // Lock the host page's scroll while the popup overlay is open so the user
-  // can't scroll the underlying page through the dimmed backdrop. We snapshot
-  // and restore the original `overflow` value rather than forcing it back to
-  // `""` so a host that intentionally pinned its own overflow keeps it.
+  // can't scroll the underlying page through the dimmed backdrop. We use a
+  // module-level counter so multiple widgets on the same page coordinate
+  // correctly: the lock applies on the first overlay's mount, and the
+  // original overflow value is restored only when the last overlay unmounts.
   useEffect(() => {
     if (!showAsOverlay) return;
 
-    const { body, documentElement } = document;
-    const prevBody = body.style.overflow;
-    const prevHtml = documentElement.style.overflow;
-    body.style.overflow = "hidden";
-    documentElement.style.overflow = "hidden";
+    if (_scrollLockCount === 0) {
+      _scrollLockPrevBody = document.body.style.overflow;
+      _scrollLockPrevHtml = document.documentElement.style.overflow;
+      document.body.style.overflow = "hidden";
+      document.documentElement.style.overflow = "hidden";
+    }
+    _scrollLockCount += 1;
 
     return () => {
-      body.style.overflow = prevBody;
-      documentElement.style.overflow = prevHtml;
+      _scrollLockCount -= 1;
+      if (_scrollLockCount === 0) {
+        document.body.style.overflow = _scrollLockPrevBody;
+        document.documentElement.style.overflow = _scrollLockPrevHtml;
+      }
     };
   }, [showAsOverlay]);
 
@@ -329,7 +446,12 @@ export function BnplFlow({
             {countryUnlocked && <ChevronDownIcon />}
           </button>
           {showAsOverlay && (
-            <button type="button" className="pl-close" onClick={reset} aria-label="Close PayLater">
+            <button
+              type="button"
+              className="pl-close"
+              onClick={dismiss}
+              aria-label="Close PayLater"
+            >
               <CloseIcon />
             </button>
           )}
@@ -374,9 +496,10 @@ export function BnplFlow({
                         return;
                       }
 
-                      // Cap at max during typing so the user can never enter a
-                      // value above the country's ceiling. Min is handled in onBlur so the user can type a number below the min (e.g. 20 EUR) and then blur to have it snap up to the floor.
-                      setAmount(Math.min(country.maxAmount, Number(digits)));
+                      // Don't clamp during typing — silent capping (e.g. typing
+                      // "1000" in a 500-max market jumping to 500 mid-keystroke)
+                      // is surprising. Min/max enforcement happens onBlur.
+                      setAmount(Number(digits));
                     }}
                     onBlur={() => {
                       if (amount > 0 && amount < country.minAmount) setAmount(country.minAmount);
@@ -384,7 +507,13 @@ export function BnplFlow({
                       else if (amount > country.maxAmount) setAmount(country.maxAmount);
                     }}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") e.currentTarget.blur();
+                      if (e.key === "Enter") {
+                        // Prevent the keystroke from bubbling up to a host page
+                        // <form> ancestor and submitting it through the shadow
+                        // boundary (form ancestry is not isolated by Shadow DOM).
+                        e.preventDefault();
+                        e.currentTarget.blur();
+                      }
                     }}
                     style={{
                       width: `${Math.max(2, String(amount === 0 ? country.minAmount : amount).length)}ch`,
@@ -718,7 +847,7 @@ export function BnplFlow({
           zIndex: 999999,
         }}
         onClick={(e) => {
-          if (e.target === e.currentTarget) reset();
+          if (e.target === e.currentTarget) dismiss();
         }}
       >
         {tile}

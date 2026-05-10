@@ -210,6 +210,19 @@ export function applyColorMode(host: HTMLElement, mode: ColorMode) {
 const _autoDisposers = new WeakMap<HTMLElement, () => void>();
 
 /**
+ * @title disposeColorMode
+ * @description Tear down any auto-mode listeners (`MutationObserver` on `<html>` and the `prefers-color-scheme` matchMedia listener) that were registered for the given host. Called from `unmount()` so widgets that mounted with `theme.mode = "auto"` don't leak observers across the document for the lifetime of the page.
+ * @param {HTMLElement} host - The host element whose auto-mode listeners should be removed.
+ */
+export function disposeColorMode(host: HTMLElement): void {
+  const dispose = _autoDisposers.get(host);
+  if (dispose) {
+    dispose();
+    _autoDisposers.delete(host);
+  }
+}
+
+/**
  * @title _detectHostMode
  * @description Resolve whether the host page is rendering in light or dark mode by probing common signals on `<html>`. Class-based theming wins (Tailwind's `.dark`/`.light`); then attribute-based theming (`data-theme`, `data-mode`); then the inline or computed `color-scheme`; with `prefers-color-scheme` as the last-resort OS fallback. Returning a concrete light/dark string lets the SDK reflect it as `data-paylater-mode` on the shadow host so its `:host([data-paylater-mode="dark"])` rules apply deterministically.
  * @returns {"light" | "dark"} The resolved color scheme.

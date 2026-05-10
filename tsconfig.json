@@ -20,12 +20,12 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": false,
+    "rootDir": "./src",
     "outDir": "./dist",
-    "types": ["node"],
     "ignoreDeprecations": "6.0",
     "allowJs": true,
     "checkJs": false
   },
-  "include": ["src/**/*", "tsup.config.ts", "eslint.config.js"],
-  "exclude": ["dist", "node_modules", "examples"]
+  "include": ["src/**/*"],
+  "exclude": ["dist", "node_modules", "examples", "tsup.config.ts", "eslint.config.js"]
 }

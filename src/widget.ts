@@ -18,6 +18,7 @@ import {
   applyColorMode,
   applyTheme,
   attachShadowHost,
+  disposeColorMode,
   injectStyles,
   resolveTarget,
 } from "./shadow";
@@ -38,7 +39,6 @@ const DEFAULT_OPTIONS = {
   product: "bnpl_30d" as const,
   asset: "usdt" as const,
   position: "inline" as const,
-  apiOrigin: "https://api.paylater.dev",
 };
 
 /**
@@ -133,15 +133,25 @@ export function createWidget(initialOptions: PayLaterOptions): WidgetInstance {
       // wrappers) that would otherwise turn the overlay's `position: fixed`
       // into a containing-block-scoped position. The portal carries its
       // own copy of the SDK CSS + theme + color-mode so the rendered tile
-      // looks identical to the inline one.
-      const portalHost = document.createElement("div");
-      portalHost.setAttribute("data-paylater-portal", "");
-      portalHost.style.cssText = "all:initial;";
-      document.body.appendChild(portalHost);
-      const { shadow: portalShadow, container: portalContainer } = attachShadowHost(portalHost);
-      injectStyles(portalShadow, inlineCss);
-      applyTheme(portalShadow, state.options.theme);
-      applyColorMode(portalShadow.host as HTMLElement, state.options.theme?.mode ?? "auto");
+      // looks identical to the inline one. Only created for `inline-popup`
+      // — `inline` keeps the entire flow in the mount target, so a
+      // body-attached div would just be dead weight (and visible to
+      // anybody snooping the host page's DOM).
+      let portalHost: HTMLElement | null = null;
+      let portalShadow: ShadowRoot | null = null;
+      let portalContainer: HTMLDivElement | null = null;
+      if (state.options.position === "inline-popup") {
+        portalHost = document.createElement("div");
+        portalHost.setAttribute("data-paylater-portal", "");
+        portalHost.style.cssText = "all:initial;";
+        document.body.appendChild(portalHost);
+        const attached = attachShadowHost(portalHost);
+        portalShadow = attached.shadow;
+        portalContainer = attached.container;
+        injectStyles(portalShadow, inlineCss);
+        applyTheme(portalShadow, state.options.theme);
+        applyColorMode(portalShadow.host as HTMLElement, state.options.theme?.mode ?? "auto");
+      }
 
       // Store all references in the internal state object, so we can clean them up on unmount.
       state.host = host;
@@ -169,6 +179,13 @@ export function createWidget(initialOptions: PayLaterOptions): WidgetInstance {
         phase: state.phase,
       });
       state.reactRoot?.unmount();
+
+      // Tear down auto-mode listeners on both shadow hosts (no-op when the
+      // mode wasn't "auto"). Without this, the per-host `MutationObserver`
+      // on `<html>` and the `prefers-color-scheme` listener leak for the
+      // lifetime of the page.
+      if (state.shadow) disposeColorMode(state.shadow.host as HTMLElement);
+      if (state.portalShadow) disposeColorMode(state.portalShadow.host as HTMLElement);
 
       // Clean up all references and DOM nodes to prevent memory leaks.
       if (state.host && state.shadow) state.shadow.innerHTML = "";

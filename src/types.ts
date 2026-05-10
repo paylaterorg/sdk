@@ -360,12 +360,6 @@ export interface PayLaterOptions {
   custody?: CustodyOptions;
 
   on?: EventHandlers; // Lifecycle callbacks.
-
-  /**
-   * Override the API origin. Useful for QA environments.
-   * Defaults to `https://api.paylater.dev`.
-   */
-  apiOrigin?: string;
 }
 
 /* -------------------------------------------------------------------------- */
