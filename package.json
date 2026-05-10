@@ -1,6 +1,6 @@
 {
   "name": "@paylater/sdk",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "type": "module",
   "description": "Frictionless USDT checkout. Tap, sign, done. Pay within 30 days. Drop-in widget for partner platforms.",
   "license": "MIT",
@@ -59,8 +59,7 @@
   },
   "dependencies": {
     "@web3icons/react": "^4.1.17",
-    "qrcode": "^1.5.4",
-    "tone": "^15.1.22"
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

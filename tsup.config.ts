@@ -24,6 +24,8 @@ export default defineConfig({
   external: ["react", "react-dom"],
   loader: {
     ".css": "text",
+    ".ico": "dataurl",
+    ".svg": "dataurl",
   },
   define: {
     __PKG_VERSION__: JSON.stringify(pkg.version),

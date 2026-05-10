@@ -25,4 +25,8 @@ dist
 coverage
 
 # AIs
+.claude/
 .omc/
+
+# Terminal Paste Image folder
+.cp-images/

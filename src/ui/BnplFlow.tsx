@@ -10,14 +10,6 @@ import { convertAmount, formatMoney, toUsdt } from "../lib/format";
 import { MOCK_ID_NUMBERS, MOCK_NAMES } from "../lib/mockEid";
 import { NETWORKS } from "../lib/networks";
 import { formatDate, generateReference, thirtyDaysFromNow } from "../lib/refs";
-import {
-  playClose,
-  playPreset,
-  playScanned,
-  playSliderTick,
-  playSnap,
-  playSuccess,
-} from "../lib/sfx";
 import { EMAIL_RE, isValidApiKey, validateAddress } from "../lib/validation";
 import type {
   CountryCode,
@@ -28,6 +20,7 @@ import type {
   SuccessEvent,
 } from "../types";
 import { EidLogo, PhaseDots } from "./components";
+import { CountryPicker } from "./components/CountryPicker";
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
@@ -41,14 +34,16 @@ import {
 } from "./icons";
 
 /**
- * @dev Lazy-loaded heavy subcomponents. Each pulls a chunk that's only
- * needed at a specific phase, so the initial parse cost stays minimal:
+ * @dev Lazy chunks. Each pulls a heavy dependency that's only needed at one
+ * specific phase, so the initial parse stays minimal:
  *
  * - `NetworkSelect` brings in `@web3icons/react` (~12KB of branded chain
  *   SVGs) — only relevant during the delivery phase.
- * - `SignOverlay` brings in `qrcode` (~30KB of QR encoder) — only
- *   relevant during the sign phase.
- * - `CountryPicker` is rarely opened; lazy-loading keeps mount cost low.
+ * - `SignOverlay` brings in `qrcode` (~30KB of QR encoder) — only relevant
+ *   during the sign phase.
+ *
+ * `CountryPicker` is imported eagerly because its on-tap latency was
+ * noticeable, and `EidLogo` is fully local SVG so neither needs splitting.
  *
  * `tsup` is configured with `splitting: true`, so these become real
  * separate chunks at consumer-bundle time.
@@ -58,9 +53,6 @@ const NetworkSelect = lazy(() =>
 );
 const SignOverlay = lazy(() =>
   import("./components/SignOverlay").then((m) => ({ default: m.SignOverlay })),
-);
-const CountryPicker = lazy(() =>
-  import("./components/CountryPicker").then((m) => ({ default: m.CountryPicker })),
 );
 
 const AMOUNT_PRESETS: Record<Currency, number[]> = {
@@ -239,10 +231,7 @@ export function BnplFlow({
     };
 
     if (signPhase === "scan") return wait(2200, () => setSignPhase("scanned"));
-    if (signPhase === "scanned") {
-      playScanned();
-      return wait(1100, () => setSignPhase("signing"));
-    }
+    if (signPhase === "scanned") return wait(1100, () => setSignPhase("signing"));
     if (signPhase === "signing") return wait(1600, () => setSignPhase("verified"));
     if (signPhase === "verified")
       return wait(900, () => {
@@ -272,7 +261,6 @@ export function BnplFlow({
 
         setSignPhase("idle");
         setPhase("done");
-        playSuccess();
         onSuccess(event);
       });
   }, [signPhase]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -300,6 +288,25 @@ export function BnplFlow({
   const position = options.position ?? "inline";
   const showAsOverlay = position === "inline-popup" && phase !== "amount";
 
+  // Lock the host page's scroll while the popup overlay is open so the user
+  // can't scroll the underlying page through the dimmed backdrop. We snapshot
+  // and restore the original `overflow` value rather than forcing it back to
+  // `""` so a host that intentionally pinned its own overflow keeps it.
+  useEffect(() => {
+    if (!showAsOverlay) return;
+
+    const { body, documentElement } = document;
+    const prevBody = body.style.overflow;
+    const prevHtml = documentElement.style.overflow;
+    body.style.overflow = "hidden";
+    documentElement.style.overflow = "hidden";
+
+    return () => {
+      body.style.overflow = prevBody;
+      documentElement.style.overflow = prevHtml;
+    };
+  }, [showAsOverlay]);
+
   const tile = (
     <div className="pl-tile">
       <header className="pl-tile-header">
@@ -322,15 +329,7 @@ export function BnplFlow({
             {countryUnlocked && <ChevronDownIcon />}
           </button>
           {showAsOverlay && (
-            <button
-              type="button"
-              className="pl-close"
-              onClick={() => {
-                playClose();
-                reset();
-              }}
-              aria-label="Close PayLater"
-            >
+            <button type="button" className="pl-close" onClick={reset} aria-label="Close PayLater">
               <CloseIcon />
             </button>
           )}
@@ -409,15 +408,7 @@ export function BnplFlow({
                 style={{
                   ["--sl-pct" as string]: `${sliderPct}%`,
                 }}
-                onChange={(e) => {
-                  const next = Number(e.target.value);
-                  if (next !== amount) {
-                    const t = (next - country.minAmount) / (country.maxAmount - country.minAmount);
-                    playSliderTick(t);
-                  }
-
-                  setAmount(next);
-                }}
+                onChange={(e) => setAmount(Number(e.target.value))}
                 aria-label="Amount"
               />
               <div className="pl-presets" role="group" aria-label="Preset amounts">
@@ -428,10 +419,7 @@ export function BnplFlow({
                       key={preset}
                       type="button"
                       className={`pl-preset-btn${amount === preset ? " pl-preset-btn--active" : ""}`}
-                      onClick={() => {
-                        playPreset();
-                        setAmount(preset);
-                      }}
+                      onClick={() => setAmount(preset)}
                     >
                       {formatMoney(country, preset)}
                     </button>
@@ -446,10 +434,7 @@ export function BnplFlow({
             <button
               type="button"
               className="pl-btn pl-btn-primary"
-              onClick={() => {
-                playSnap();
-                setPhase("delivery");
-              }}
+              onClick={() => setPhase("delivery")}
               disabled={!apiKeyValid || !amountValid}
             >
               Continue
@@ -556,10 +541,7 @@ export function BnplFlow({
               <button
                 type="button"
                 className="pl-btn pl-btn-ghost"
-                onClick={() => {
-                  playClose();
-                  setPhase("amount");
-                }}
+                onClick={() => setPhase("amount")}
               >
                 <ArrowLeftIcon />
                 Back
@@ -567,10 +549,7 @@ export function BnplFlow({
               <button
                 type="button"
                 className="pl-btn pl-btn-primary"
-                onClick={() => {
-                  playSnap();
-                  setPhase("sign");
-                }}
+                onClick={() => setPhase("sign")}
                 disabled={!deliveryValid}
               >
                 Continue
@@ -607,10 +586,7 @@ export function BnplFlow({
               <button
                 type="button"
                 className="pl-btn pl-btn-ghost"
-                onClick={() => {
-                  playClose();
-                  setPhase("delivery");
-                }}
+                onClick={() => setPhase("delivery")}
               >
                 <ArrowLeftIcon />
                 Back
@@ -618,10 +594,7 @@ export function BnplFlow({
               <button
                 type="button"
                 className="pl-btn pl-btn-primary"
-                onClick={() => {
-                  playSnap();
-                  setSignPhase("scan");
-                }}
+                onClick={() => setSignPhase("scan")}
               >
                 <EidLogo country={countryCode} size={16} />
                 Sign with {country.eid}
@@ -687,25 +660,11 @@ export function BnplFlow({
             </div>
 
             <div className="pl-btn-row" style={{ justifyContent: "center" }}>
-              <button
-                type="button"
-                className="pl-btn pl-btn-ghost"
-                onClick={() => {
-                  playSnap();
-                  copyReference();
-                }}
-              >
+              <button type="button" className="pl-btn pl-btn-ghost" onClick={copyReference}>
                 {copied ? <CheckIcon /> : <CopyIcon />}
                 {copied ? "Copied" : "Copy reference"}
               </button>
-              <button
-                type="button"
-                className="pl-btn pl-btn-ghost"
-                onClick={() => {
-                  playSnap();
-                  reset();
-                }}
-              >
+              <button type="button" className="pl-btn pl-btn-ghost" onClick={reset}>
                 Run again
               </button>
             </div>
@@ -719,21 +678,19 @@ export function BnplFlow({
       </footer>
 
       {countryPickerOpen && (
-        <Suspense fallback={null}>
-          <CountryPicker
-            current={countryCode}
-            onPick={(code) => {
-              // Convert the slider's amount into the new market's currency at
-              // pick time so the user keeps roughly the same purchasing power
-              // when they swap markets mid-flow.
-              const next = COUNTRIES[code];
-              setAmount(convertAmount(country, next, amount));
-              setCountryCode(code);
-              setCountryPickerOpen(false);
-            }}
-            onClose={() => setCountryPickerOpen(false)}
-          />
-        </Suspense>
+        <CountryPicker
+          current={countryCode}
+          onPick={(code) => {
+            // Convert the slider's amount into the new market's currency at
+            // pick time so the user keeps roughly the same purchasing power
+            // when they swap markets mid-flow.
+            const next = COUNTRIES[code];
+            setAmount(convertAmount(country, next, amount));
+            setCountryCode(code);
+            setCountryPickerOpen(false);
+          }}
+          onClose={() => setCountryPickerOpen(false)}
+        />
       )}
     </div>
   );

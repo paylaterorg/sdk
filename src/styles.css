@@ -1034,3 +1034,170 @@
   width: 2.25rem;
   height: 2.25rem;
 }
+
+/* ---------------------------------------------------------------------------
+ * Mobile / touch overrides.
+ *
+ * Apple HIG calls for a 44pt minimum tap target; we go a touch larger
+ * (48–52px) on phone-sized viewports so inputs, buttons, sliders, and
+ * chips are comfortable to hit with a thumb. Desktop layout is untouched.
+ *
+ * Inputs are also bumped to 16px font-size to suppress iOS Safari's
+ * focus-zoom behaviour (which kicks in for any field below 16px).
+ * --------------------------------------------------------------------------- */
+@media (max-width: 480px) {
+  .pl-tile-header {
+    padding: 0.875rem 1.25rem;
+  }
+
+  .pl-tile-body {
+    padding: 1.125rem 1.25rem 1.375rem;
+    gap: 1.125rem;
+  }
+
+  .pl-tile-footer {
+    padding: 0.875rem 1.25rem;
+  }
+
+  /* Buttons — 52px so primary CTAs sit in Apple's preferred 48–57 range. */
+  .pl-btn {
+    height: 3.25rem;
+    min-height: 3.25rem;
+    padding: 0 1.5rem;
+    font-size: 1rem;
+    gap: 0.5rem;
+  }
+
+  /* Stack action rows vertically — primary on top — so long eID labels
+     ("Sign with France Connect+", "Sign with BankID Sweden") never get
+     clipped on narrow phones. Each button takes the full width. */
+  .pl-btn-row {
+    flex-direction: column-reverse;
+    gap: 0.625rem;
+  }
+
+  .pl-btn-row .pl-btn {
+    width: 100%;
+  }
+
+  /* Inputs / selects / network trigger — 48px and 16px text (no iOS zoom). */
+  .pl-input,
+  .pl-select,
+  .pl-textarea,
+  .pl-network-trigger {
+    height: 3rem;
+    min-height: 3rem;
+    font-size: 1rem;
+    padding: 0 0.875rem;
+  }
+
+  .pl-textarea {
+    height: auto;
+    min-height: 5rem;
+    padding: 0.75rem 0.875rem;
+    font-size: 0.9375rem;
+  }
+
+  .pl-select {
+    background-position: right 0.875rem center;
+    padding-right: 2.5rem;
+  }
+
+  .pl-label {
+    font-size: 0.8125rem;
+    margin-bottom: 0.5rem;
+  }
+
+  /* Network dropdown options — 48px tall. */
+  .pl-network-option {
+    height: 3rem;
+    font-size: 0.9375rem;
+    padding: 0 0.875rem;
+  }
+
+  /* Country chip — bumped from 28px to 36px so it's tappable. */
+  .pl-country-chip {
+    height: 2.25rem;
+    padding: 0 0.875rem;
+    font-size: 0.8125rem;
+  }
+
+  /* Country picker rows — 52px so they're clearly separable on a phone. */
+  .pl-country-row {
+    padding: 0.875rem 1.25rem;
+    gap: 0.75rem;
+  }
+
+  .pl-country-name {
+    font-size: 0.9375rem;
+  }
+
+  .pl-country-meta {
+    font-size: 0.75rem;
+  }
+
+  .pl-country-sheet-header {
+    padding: 0.875rem 1.25rem;
+    font-size: 1rem;
+  }
+
+  /* Close button — 44×44 hit area. */
+  .pl-close {
+    padding: 0.625rem;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    font-size: 1.125rem;
+  }
+
+  /* Preset chips — taller and roomier so they're easy to thumb-tap. */
+  .pl-preset-btn {
+    padding: 0.625rem 0.5rem;
+    font-size: 0.8125rem;
+    min-height: 2.5rem;
+  }
+
+  .pl-presets {
+    gap: 0.5rem;
+  }
+
+  /* Slider — thicker track, larger thumb (28px) for finger control. */
+  .pl-slider {
+    height: 0.625rem;
+  }
+
+  .pl-slider::-webkit-slider-thumb {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+
+  .pl-slider::-moz-range-thumb {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+
+  /* Inline editable amount — bigger so it's also a comfortable tap target. */
+  .pl-amount {
+    font-size: 1.75rem;
+  }
+
+  .pl-amount-card {
+    padding: 1rem;
+    gap: 0.875rem;
+  }
+
+  /* USDT pill */
+  .pl-usdt-pill {
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+  }
+
+  /* Sign card / summary spacing breathes a little on phones. */
+  .pl-sign-card {
+    padding: 1.125rem;
+  }
+
+  .pl-summary {
+    padding: 0.875rem 1rem;
+    font-size: 0.8125rem;
+  }
+}
