@@ -249,9 +249,16 @@
   background: oklch(0 0 0 / 0.5);
   backdrop-filter: blur(4px);
   display: flex;
-  align-items: center;
+  /* `safe center` keeps the tile centered when there's room, but falls back
+     to top-aligned (instead of overflowing equally top/bottom and clipping
+     the top out of reach) when the tile is taller than the viewport — e.g.
+     mobile landscape with the soft keyboard up. Combined with overflow-y
+     this means the user can always scroll to the bottom of the tile. */
+  align-items: safe center;
   justify-content: center;
   padding: 1rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   z-index: 999999;
   animation: pl-fade-in 200ms ease-out;
 }
@@ -1200,4 +1207,55 @@
     padding: 0.875rem 1rem;
     font-size: 0.8125rem;
   }
+}
+
+/* ---------------------------------------------------------------------------
+ * Scrollbars.
+ *
+ * Anywhere the widget allows internal scrolling (popup overlay when the tile
+ * is taller than the viewport, country picker list, network dropdown, wallet
+ * textarea), we restyle the scrollbar to match the widget's neutral chrome
+ * instead of falling back to whatever the host OS gives us — which on
+ * Windows in particular is a bright opaque bar that fights the design.
+ * --------------------------------------------------------------------------- */
+
+.pl-overlay,
+.pl-country-list,
+.pl-network-menu,
+.pl-textarea {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklch, var(--paylater-fg) 28%, transparent) transparent;
+}
+
+.pl-overlay::-webkit-scrollbar,
+.pl-country-list::-webkit-scrollbar,
+.pl-network-menu::-webkit-scrollbar,
+.pl-textarea::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.pl-overlay::-webkit-scrollbar-track,
+.pl-country-list::-webkit-scrollbar-track,
+.pl-network-menu::-webkit-scrollbar-track,
+.pl-textarea::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.pl-overlay::-webkit-scrollbar-thumb,
+.pl-country-list::-webkit-scrollbar-thumb,
+.pl-network-menu::-webkit-scrollbar-thumb,
+.pl-textarea::-webkit-scrollbar-thumb {
+  background: color-mix(in oklch, var(--paylater-fg) 28%, transparent);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.pl-overlay::-webkit-scrollbar-thumb:hover,
+.pl-country-list::-webkit-scrollbar-thumb:hover,
+.pl-network-menu::-webkit-scrollbar-thumb:hover,
+.pl-textarea::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklch, var(--paylater-fg) 45%, transparent);
+  background-clip: padding-box;
 }
