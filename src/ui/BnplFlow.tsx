@@ -200,7 +200,13 @@ export function BnplFlow({
   const [prevOptionCountry, setPrevOptionCountry] = useState(options.country);
   if (options.country !== prevOptionCountry) {
     setPrevOptionCountry(options.country);
-    if (options.country) setCountryCode(options.country);
+    if (options.country) {
+      setCountryCode(options.country);
+
+      // When the partner didn't pass an explicit `amount`, snap the slider to
+      // the new country's natural starting value.
+      if (typeof options.amount !== "number") setAmount(COUNTRIES[options.country].minAmount);
+    }
   }
 
   const [prevOptionEmail, setPrevOptionEmail] = useState(options.prefill?.email);
