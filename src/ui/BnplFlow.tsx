@@ -6,7 +6,7 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type JSX } from "react";
 import { createPortal } from "react-dom";
 import { COUNTRIES } from "../lib/countries";
-import { convertAmount, formatMoney, toUsdt } from "../lib/format";
+import { convertAmount, formatCompact, formatMoney, toUsdt } from "../lib/format";
 import { MOCK_ID_NUMBERS, MOCK_NAMES } from "../lib/mockEid";
 import { NETWORKS } from "../lib/networks";
 import { formatDate, generateReference, thirtyDaysFromNow } from "../lib/refs";
@@ -550,7 +550,8 @@ export function BnplFlow({
                       className={`pl-preset-btn${amount === preset ? " pl-preset-btn--active" : ""}`}
                       onClick={() => setAmount(preset)}
                     >
-                      {formatMoney(country, preset)}
+                      <span className="pl-preset-full">{formatMoney(country, preset)}</span>
+                      <span className="pl-preset-short">{formatCompact(preset)}</span>
                     </button>
                   ))}
               </div>

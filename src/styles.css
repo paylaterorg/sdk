@@ -92,6 +92,12 @@
   isolation: isolate;
   display: flex;
   flex-direction: column;
+  /* Establish a query container so inner pieces (preset chips, etc.) can
+     respond to the widget's actual rendered width rather than the device
+     viewport — partners may embed the widget in a sidebar, modal, or split
+     column that's much narrower than the page itself. */
+  container-type: inline-size;
+  container-name: pl-tile;
 }
 
 .pl-tile-header {
@@ -817,9 +823,34 @@
  * --------------------------------------------------------------------------- */
 
 .pl-presets {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 0.375rem;
-  flex-wrap: nowrap;
+}
+
+/* Two labels are rendered per chip — the full locale-formatted amount
+   ("5 000 kr") and a compact form ("5k"). On comfortable widths (iPhone
+   14 Pro Max, desktop, etc.) the full label shows; on narrow widths
+   (Galaxy S8+ at 360px, sidebars, narrow modals) we swap to the compact
+   form so all four chips stay on one row. Container queries fire against
+   the widget's actual rendered width — not the viewport — so embeds in a
+   narrow sidebar on a wide screen also get the compact treatment. */
+.pl-preset-full {
+  display: inline;
+}
+
+.pl-preset-short {
+  display: none;
+}
+
+@container pl-tile (max-width: 22rem) {
+  .pl-preset-full {
+    display: none;
+  }
+
+  .pl-preset-short {
+    display: inline;
+  }
 }
 
 .pl-preset-btn {
@@ -834,11 +865,8 @@
   font-variant-numeric: tabular-nums;
   padding: 0.3rem 0.5rem;
   cursor: pointer;
-  flex: 1 1 0;
   min-width: 0;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   transition:
     border-color 120ms ease,
     background 120ms ease,

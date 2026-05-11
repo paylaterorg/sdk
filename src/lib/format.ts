@@ -25,6 +25,23 @@ export function formatMoney(country: CountryConfig, amount: number): string {
 }
 
 /**
+ * @title formatCompact
+ * @description Short numeric label used by preset chips at narrow widths
+ * (Galaxy S8+, sidebars, narrow modals) where the full "5 000 kr" string
+ * gets ellipsis-truncated. 1000+ collapses to "k" form: 1000→"1k",
+ * 2500→"2.5k", 5000→"5k". Currency is dropped because the customer already
+ * sees it on the editable amount row directly above.
+ * @param {number} value - The preset amount in local currency units.
+ * @returns {string} Compact label suitable for a tight chip.
+ */
+export function formatCompact(value: number): string {
+  if (value < 1000) return String(value);
+
+  const k = value / 1000;
+  return `${Number.isInteger(k) ? k : k.toFixed(1).replace(/\.0$/, "")}k`;
+}
+
+/**
  * @title toUsdt
  * @description Convert a local-currency amount to its USDT equivalent.
  * @param {CountryConfig} country - The country config (drives currency + locale).
