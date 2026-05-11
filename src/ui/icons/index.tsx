@@ -185,14 +185,16 @@ export function CopyIcon(): JSX.Element {
 /**
  * @title PayLaterLogo
  * @description Inlined paths from `paylater-emblem.svg`. The lime fill + dark forest glyph route through `--paylater-primary` / `--paylater-primary-foreground` so partner-overridden brand colors invert correctly. Clipped to a circle via CSS.
- * @returns {JSX.Element} The 22×22 emblem SVG.
+ * @param {Object} [props]
+ * @param {number} [props.size] - Side length in pixels. Defaults to 22 to match the header brand. Use ~14–16 for the compact footer brand line.
+ * @returns {JSX.Element} The square emblem SVG.
  */
-export function PayLaterLogo(): JSX.Element {
+export function PayLaterLogo({ size = 22 }: { size?: number } = {}): JSX.Element {
   return (
     <svg
       viewBox="0 0 1024 1024"
-      width="22"
-      height="22"
+      width={size}
+      height={size}
       style={{ flexShrink: 0, borderRadius: "50%" }}
       aria-hidden
     >

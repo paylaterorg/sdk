@@ -71,7 +71,6 @@ export function CountryPicker({
         <input
           type="text"
           className="pl-input"
-          autoFocus
           placeholder="Search by country, currency or eID"
           value={query}
           onChange={(e) => setQuery(e.target.value)}

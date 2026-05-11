@@ -30,7 +30,6 @@ import {
   CoinIcon,
   CopyIcon,
   PayLaterLogo,
-  ShieldIcon,
 } from "./icons";
 
 /**
@@ -424,13 +423,35 @@ export function BnplFlow({
     };
   }, [showAsOverlay]);
 
+  // In popup mode the back button lives in the top-left of the dialog (mobile-app
+  // nav-bar pattern) instead of at the bottom of each phase. From sign we step
+  // back to delivery; from delivery we step back to amount (which collapses the
+  // overlay and reveals the inline amount tile again).
+  const headerBack: Phase | null =
+    showAsOverlay && phase === "sign"
+      ? "delivery"
+      : showAsOverlay && phase === "delivery"
+        ? "amount"
+        : null;
+
   const tile = (
     <div className="pl-tile">
       <header className="pl-tile-header">
-        <span className="pl-brand">
-          <PayLaterLogo />
-          PayLater
-        </span>
+        {headerBack ? (
+          <button
+            type="button"
+            className="pl-close"
+            onClick={() => setPhase(headerBack)}
+            aria-label="Go back"
+          >
+            <ArrowLeftIcon />
+          </button>
+        ) : (
+          <span className="pl-brand">
+            <PayLaterLogo />
+            PayLater
+          </span>
+        )}
         <span style={{ display: "inline-flex", gap: "0.375rem", alignItems: "center" }}>
           <button
             type="button"
@@ -668,14 +689,16 @@ export function BnplFlow({
             </div>
 
             <div className="pl-btn-row">
-              <button
-                type="button"
-                className="pl-btn pl-btn-ghost"
-                onClick={() => setPhase("amount")}
-              >
-                <ArrowLeftIcon />
-                Back
-              </button>
+              {!showAsOverlay && (
+                <button
+                  type="button"
+                  className="pl-btn pl-btn-ghost"
+                  onClick={() => setPhase("amount")}
+                >
+                  <ArrowLeftIcon />
+                  Back
+                </button>
+              )}
               <button
                 type="button"
                 className="pl-btn pl-btn-primary"
@@ -713,14 +736,16 @@ export function BnplFlow({
             </p>
 
             <div className="pl-btn-row">
-              <button
-                type="button"
-                className="pl-btn pl-btn-ghost"
-                onClick={() => setPhase("delivery")}
-              >
-                <ArrowLeftIcon />
-                Back
-              </button>
+              {!showAsOverlay && (
+                <button
+                  type="button"
+                  className="pl-btn pl-btn-ghost"
+                  onClick={() => setPhase("delivery")}
+                >
+                  <ArrowLeftIcon />
+                  Back
+                </button>
+              )}
               <button
                 type="button"
                 className="pl-btn pl-btn-primary"
@@ -803,8 +828,17 @@ export function BnplFlow({
       </div>
 
       <footer className="pl-tile-footer">
-        <ShieldIcon />
-        Powered by Scrive eID — {country.eid}
+        <span className="pl-footer-mark">
+          <PayLaterLogo size={14} />
+          PayLater
+        </span>
+        <span className="pl-footer-sep" aria-hidden>
+          ·
+        </span>
+        <span className="pl-footer-mark">
+          <EidLogo country={countryCode} size={14} />
+          {country.eid}
+        </span>
       </footer>
 
       {countryPickerOpen && (
