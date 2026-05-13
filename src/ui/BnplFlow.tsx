@@ -10,6 +10,7 @@ import { convertAmount, formatCompact, formatMoney, toUsdt } from "../lib/format
 import { MOCK_ID_NUMBERS, MOCK_NAMES } from "../lib/mockEid";
 import { NETWORKS } from "../lib/networks";
 import { formatDate, generateReference, thirtyDaysFromNow } from "../lib/refs";
+import { validateApiKey } from "../lib/tokenClient";
 import { EMAIL_RE, isValidApiKey, validateAddress } from "../lib/validation";
 import type {
   CountryCode,
@@ -66,6 +67,28 @@ const SignOverlay = lazy(() =>
 let _scrollLockCount = 0;
 let _scrollLockPrevBody = "";
 let _scrollLockPrevHtml = "";
+
+/**
+ * @dev Fallback base URL for the on-mount token check when the consumer
+ * didn't pass `apiBaseUrl`.
+ */
+const DEFAULT_API_BASE_URL = "https://api.paylater.dev";
+
+/**
+ * @dev State of the on-mount remote `apiKey` validation.
+ *
+ * - `idle`        — not started (the key failed the local regex, so the
+ *                   existing "provide a valid pk_test_*" path owns the UI).
+ * - `checking`    — request in flight; the amount UI stays usable but the
+ *                   customer can't advance past it yet.
+ * - `valid`       — the API recognised the key. Behaves like today.
+ * - `invalid`     — the API rejected the key. The flow body is replaced with
+ *                   an error panel.
+ * - `unreachable` — couldn't reach the API. Fails closed: the flow body is
+ *                   replaced with an error panel and `onError(network_error)`
+ *                   fires. We refuse to start a checkout we can't verify.
+ */
+type TokenCheck = "idle" | "checking" | "valid" | "invalid" | "unreachable";
 
 const AMOUNT_PRESETS: Record<Currency, number[]> = {
   SEK: [500, 1000, 2500, 5000],
@@ -125,6 +148,7 @@ export function BnplFlow({
   options,
   onPhaseChange,
   onSuccess,
+  onError,
   portalContainer,
 }: BnplFlowProps): JSX.Element {
   const initialCountry: CountryCode = options.country ?? "SE";
@@ -266,6 +290,86 @@ export function BnplFlow({
   // The API key is required to proceed past the amount phase, so we validate
   // it early to avoid wasted time on the rest of the form when it's missing.
   const apiKeyValid = isValidApiKey(options.apiKey);
+
+  // Remote `apiKey` check. On mount, once the key passes the local regex, we
+  // ask the API whether it actually recognises it (see `tokenClient`). Stays
+  // `idle` when the key is malformed (the existing "provide a valid pk_test_*"
+  // path handles that). Both `invalid` and `unreachable` fail closed — we
+  // refuse to start a checkout we can't verify and show the error panel.
+  const apiBaseUrl = options.apiBaseUrl ?? DEFAULT_API_BASE_URL;
+
+  // The check state to start from for the current key / config — before any
+  // remote round-trip resolves. `idle` for a malformed key, `checking` while
+  // a request is in flight.
+  const pendingTokenCheck: TokenCheck = !apiKeyValid ? "idle" : "checking";
+
+  const [tokenCheck, setTokenCheck] = useState<TokenCheck>(pendingTokenCheck);
+
+  // Reactive re-validation. If the partner swaps `apiKey` / `apiBaseUrl` via
+  // `instance.update(...)`, snap the check state back to its pending baseline
+  // during render (the file's established "adjust state during render"
+  // pattern) so the effect below kicks off a fresh round-trip from a clean
+  // slate instead of showing a stale verdict.
+  const [prevApiKey, setPrevApiKey] = useState(options.apiKey);
+  const [prevApiBaseUrl, setPrevApiBaseUrl] = useState(apiBaseUrl);
+  if (options.apiKey !== prevApiKey || apiBaseUrl !== prevApiBaseUrl) {
+    setPrevApiKey(options.apiKey);
+    setPrevApiBaseUrl(apiBaseUrl);
+    setTokenCheck(pendingTokenCheck);
+  }
+
+  // `onError` may change identity across renders (the React adapter wraps it
+  // in a fresh closure each render); keep a ref so the mount effect doesn't
+  // re-run and re-fire the network call.
+  const onErrorRef = useRef(onError);
+  useEffect(() => {
+    onErrorRef.current = onError;
+  });
+
+  useEffect(() => {
+    // Malformed key → existing local path owns the messaging; no network call.
+    if (!apiKeyValid) return;
+
+    const controller = new AbortController();
+
+    validateApiKey(options.apiKey, apiBaseUrl, controller.signal).then((result) => {
+      // The caller signal was aborted (widget unmounted, or key changed and
+      // the effect re-ran) — committing state here would be a no-op warning.
+      if (controller.signal.aborted) return;
+
+      if ("valid" in result && result.valid) {
+        setTokenCheck("valid");
+        return;
+      }
+
+      if ("valid" in result && !result.valid) {
+        setTokenCheck("invalid");
+        onErrorRef.current?.({
+          code: "invalid_api_key",
+          message: "This API key was not recognized by PayLater.",
+        });
+        return;
+      }
+
+      // `{ unreachable: true }` — fail closed; surface a visible error panel
+      // and notify the consumer rather than silently proceeding.
+      setTokenCheck("unreachable");
+      onErrorRef.current?.({
+        code: "network_error",
+        message: "Could not reach PayLater to verify the API key.",
+      });
+    });
+
+    // Abort the in-flight request when the widget unmounts (or the key changes).
+    return () => controller.abort();
+  }, [options.apiKey, apiBaseUrl, apiKeyValid]);
+
+  // True while the remote check is running or has failed — the amount UI
+  // stays usable while `checking` but the customer can't advance past it.
+  // `invalid` / `unreachable` short-circuit to the error panel below, so the
+  // gate is redundant there but kept for safety.
+  const tokenCheckBlocking =
+    tokenCheck === "checking" || tokenCheck === "invalid" || tokenCheck === "unreachable";
 
   // Country is editable when the partner hasn't locked it AND the customer
   // hasn't already passed the delivery step — once a credit agreement is
@@ -440,6 +544,54 @@ export function BnplFlow({
         ? "amount"
         : null;
 
+  // The remote check either rejected the key or couldn't reach the API.
+  // Either way we refuse to start a checkout we can't verify and replace the
+  // whole flow with a dedicated error panel (rendered inline at the mount
+  // target, still inside the Shadow DOM).
+  if (tokenCheck === "invalid" || tokenCheck === "unreachable") {
+    const isUnreachable = tokenCheck === "unreachable";
+    return (
+      <div className="pl-tile">
+        <header className="pl-tile-header">
+          <span className="pl-brand">
+            <PayLaterLogo />
+            PayLater
+          </span>
+        </header>
+        <div className="pl-tile-body">
+          <div className="pl-error-panel" data-pl-phase="error">
+            <div className="pl-error-panel-icon" aria-hidden>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+            </div>
+            <h3 className="pl-h2">Payments unavailable</h3>
+            <p className="pl-caption">
+              {isUnreachable
+                ? "We couldn't reach PayLater to verify this widget. Please check your connection and try again."
+                : "This widget was loaded with an API key PayLater doesn't recognize."}
+            </p>
+          </div>
+        </div>
+        <footer className="pl-tile-footer">
+          <span className="pl-footer-mark">
+            <PayLaterLogo size={14} />
+            PayLater
+          </span>
+        </footer>
+      </div>
+    );
+  }
+
   const tile = (
     <div className="pl-tile">
       <header className="pl-tile-header">
@@ -592,15 +744,21 @@ export function BnplFlow({
               type="button"
               className="pl-btn pl-btn-primary"
               onClick={() => setPhase("delivery")}
-              disabled={!apiKeyValid || !amountValid}
+              disabled={!apiKeyValid || !amountValid || tokenCheckBlocking}
             >
-              Continue
+              {tokenCheck === "checking" ? "Verifying…" : "Continue"}
               <ArrowRightIcon />
             </button>
 
             {!apiKeyValid && (
               <p className="pl-caption" style={{ textAlign: "center" }}>
                 Provide a valid <code>pk_test_*</code> or <code>pk_live_*</code> API key.
+              </p>
+            )}
+
+            {apiKeyValid && tokenCheck === "checking" && (
+              <p className="pl-caption" style={{ textAlign: "center" }}>
+                Verifying your API key with PayLater…
               </p>
             )}
           </div>

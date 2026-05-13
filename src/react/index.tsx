@@ -75,8 +75,7 @@ function PayLaterWidgetImpl(
 
     const initial: PayLaterOptions = {
       apiKey: props.apiKey,
-      product: props.product,
-      asset: props.asset,
+      apiBaseUrl: props.apiBaseUrl,
       theme: props.theme,
       position: props.position,
       locale: props.locale,

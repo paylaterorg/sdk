@@ -22,7 +22,6 @@ export const PayLater: PayLaterSDK = {
 export default PayLater;
 
 export type {
-  Asset,
   CloseEvent,
   ColorMode,
   CountryCode,
@@ -39,7 +38,6 @@ export type {
   PayLaterSDK,
   Position,
   PrefillOptions,
-  Product,
   RadiusScale,
   SelfCustodyOptions,
   SuccessEvent,

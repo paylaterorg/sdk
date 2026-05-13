@@ -144,21 +144,20 @@ The SDK renders inside a **Shadow DOM** attached to your mount target. That mean
 
 Returns a `WidgetInstance` (vanilla) or renders a self-managing component (React). Both consume the same option surface.
 
-| Option     | Type                                                           | Default            | Notes                                                                                                                                  |
-| ---------- | -------------------------------------------------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `apiKey`   | `string` (required)                                            | —                  | Starts with `pk_test_` or `pk_live_`                                                                                                   |
-| `product`  | `"bnpl_30d"`                                                   | `"bnpl_30d"`       | Only one product variant for now                                                                                                       |
-| `asset`    | `"usdt"`                                                       | `"usdt"`           | Only one asset variant for now                                                                                                         |
-| `theme`    | `ThemeOptions`                                                 | brand defaults     | See below                                                                                                                              |
-| `position` | `"inline" \| "inline-popup"`                                   | `"inline"`         | See "Position modes" below.                                                                                                            |
-| `locale`   | BCP-47 string                                                  | auto-detected      | Falls back to country default                                                                                                          |
-| `country`  | `"SE" \| "NO" \| "FI" \| "DK" \| "DE" \| "FR" \| "NL" \| "GB"` | auto-detected      | Pre-select; user can change unless `lock` includes `"country"`                                                                         |
-| `amount`   | `number`                                                       | country min        | Pre-fill the amount slider in local currency                                                                                           |
-| `prefill`  | `PrefillOptions`                                               | `{}`               | Pre-populate email / wallet / network / fullName — see below                                                                           |
-| `hide`     | `FieldId[]`                                                    | `[]`               | Remove fields from the UI entirely (must be covered by prefill)                                                                        |
-| `lock`     | `FieldId[]`                                                    | `[]`               | Make fields read-only (must be covered by prefill)                                                                                     |
-| `custody`  | `CustodyOptions`                                               | `{ mode: "self" }` | `"self"` ships USDT on-chain to user wallet; `"merchant"` lets the partner credit the user's balance internally (off-chain by default) |
-| `on`       | `EventHandlers`                                                | —                  | Vanilla SDK only — the React adapter takes `onSuccess`, `onError`, `onClose`, `onReady`, `onPhaseChange` as top-level props            |
+| Option       | Type                                                           | Default                      | Notes                                                                                                                                                       |
+| ------------ | -------------------------------------------------------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apiKey`     | `string` (required)                                            | —                            | Starts with `pk_test_` or `pk_live_`. Verified against the PayLater API on mount; an unrecognized or unreachable key replaces the flow with an error panel. |
+| `apiBaseUrl` | `string`                                                       | `"https://api.paylater.dev"` | Override the API origin used for the on-mount key check. Mainly useful for self-host or local dev.                                                          |
+| `theme`      | `ThemeOptions`                                                 | brand defaults               | See below                                                                                                                                                   |
+| `position`   | `"inline" \| "inline-popup"`                                   | `"inline"`                   | See "Position modes" below.                                                                                                                                 |
+| `locale`     | BCP-47 string                                                  | auto-detected                | Falls back to country default                                                                                                                               |
+| `country`    | `"SE" \| "NO" \| "FI" \| "DK" \| "DE" \| "FR" \| "NL" \| "GB"` | auto-detected                | Pre-select; user can change unless `lock` includes `"country"`                                                                                              |
+| `amount`     | `number`                                                       | country min                  | Pre-fill the amount slider in local currency                                                                                                                |
+| `prefill`    | `PrefillOptions`                                               | `{}`                         | Pre-populate email / wallet / network / fullName — see below                                                                                                |
+| `hide`       | `FieldId[]`                                                    | `[]`                         | Remove fields from the UI entirely (must be covered by prefill)                                                                                             |
+| `lock`       | `FieldId[]`                                                    | `[]`                         | Make fields read-only (must be covered by prefill)                                                                                                          |
+| `custody`    | `CustodyOptions`                                               | `{ mode: "self" }`           | `"self"` ships USDT on-chain to user wallet; `"merchant"` lets the partner credit the user's balance internally (off-chain by default)                      |
+| `on`         | `EventHandlers`                                                | —                            | Vanilla SDK only — the React adapter takes `onSuccess`, `onError`, `onClose`, `onReady`, `onPhaseChange` as top-level props                                 |
 
 ### Position modes
 
@@ -267,15 +266,15 @@ The object returned by `PayLater.init()` (vanilla SDK only — the React adapter
 
 ## Error codes
 
-| Code                    | When                                                             |
-| ----------------------- | ---------------------------------------------------------------- |
-| `invalid_api_key`       | `apiKey` is missing or not in `pk_(test\|live)_*` shape          |
-| `country_not_supported` | `country` is set to an ISO that PayLater does not yet operate in |
-| `amount_out_of_range`   | `amount` is outside the country's `[min, max]` range             |
-| `wallet_invalid`        | The wallet address fails network-specific validation             |
-| `eid_signing_failed`    | The eID provider returned a failure or the QR session expired    |
-| `network_error`         | Lost connectivity during a backend call                          |
-| `unknown`               | Catch-all — `cause` is populated                                 |
+| Code                    | When                                                                                              |
+| ----------------------- | ------------------------------------------------------------------------------------------------- |
+| `invalid_api_key`       | `apiKey` is missing, not in `pk_(test\|live)_*` shape, or the PayLater API does not recognize it  |
+| `country_not_supported` | `country` is set to an ISO that PayLater does not yet operate in                                  |
+| `amount_out_of_range`   | `amount` is outside the country's `[min, max]` range                                              |
+| `wallet_invalid`        | The wallet address fails network-specific validation                                              |
+| `eid_signing_failed`    | The eID provider returned a failure or the QR session expired                                     |
+| `network_error`         | Lost connectivity during a backend call (including the on-mount key check, which blocks the flow) |
+| `unknown`               | Catch-all — `cause` is populated                                                                  |
 
 ## Try it locally
 

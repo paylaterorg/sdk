@@ -24,16 +24,6 @@ export type CountryCode = "SE" | "NO" | "FI" | "DK" | "DE" | "FR" | "NL" | "GB";
 export type Network = "solana" | "ethereum" | "polygon" | "tron" | "arbitrum" | "base";
 
 /**
- * @dev Asset variants offered by PayLater. Currently only USDT.
- */
-export type Asset = "usdt";
-
-/**
- * @dev Product variants. v1 is bnpl_30d (Buy now, Pay within 30 days).
- */
-export type Product = "bnpl_30d";
-
-/**
  * @dev How the widget renders relative to its mount target.
  *
  * - `"inline"` — entire flow renders in the tile at the mount target. Every
@@ -325,8 +315,14 @@ export interface EventHandlers {
  */
 export interface PayLaterOptions {
   apiKey: string; // Publishable API key. `pk_test_*` for sandbox, `pk_live_*` for production.
-  product?: Product; // Product variant. Currently only `"bnpl_30d"`.
-  asset?: Asset; // Asset variant. Currently only `"usdt"`.
+
+  /**
+   * Base URL of the PayLater API the widget calls to validate `apiKey` on
+   * mount. Defaults to `"https://api.paylater.dev"`. Override to point at a
+   * self-hosted deployment or, during local development, `"http://localhost:3001"`.
+   */
+  apiBaseUrl?: string;
+
   theme?: ThemeOptions; // Theme tokens. Merged over the brand defaults.
   position?: Position; // How the widget renders. Inline (default) or Inline-Popup.
   locale?: Locale; // Locale for the widget UI. Falls back to the customer's detected country.

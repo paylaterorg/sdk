@@ -762,6 +762,43 @@
   font-weight: 500;
 }
 
+/* Full-tile error panel — shown in place of the flow when the API rejects
+ * the partner's `apiKey`. Same vertical rhythm as the normal phase stacks,
+ * tinted with the destructive token (icon badge mirrors `.pl-success-icon`). */
+.pl-error-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  text-align: center;
+  padding: 0.5rem 0;
+}
+
+.pl-error-panel-icon {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  background: color-mix(in oklch, var(--paylater-destructive) 15%, transparent);
+  color: var(--paylater-destructive);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 6px color-mix(in oklch, var(--paylater-destructive) 8%, transparent);
+}
+
+.pl-error-panel-icon svg {
+  width: 2rem;
+  height: 2rem;
+}
+
+.pl-error-panel .pl-h2 {
+  color: var(--paylater-destructive);
+}
+
+.pl-error-panel .pl-caption {
+  max-width: 22rem;
+}
+
 /* Range slider — themed accent applied via CSS custom property. */
 .pl-slider {
   width: 100%;

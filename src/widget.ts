@@ -30,18 +30,6 @@ import { Widget } from "./ui/Widget";
 import inlineCss from "./styles.css";
 
 /**
- * @dev Default options merged on top of whatever the consumer passes.
- *
- * These are the values the marketing site advertises, so changing them is a
- * public-API change.
- */
-const DEFAULT_OPTIONS = {
-  product: "bnpl_30d" as const,
-  asset: "usdt" as const,
-  position: "inline" as const,
-};
-
-/**
  * @dev Internal book-keeping for a single widget instance. The factory holds
  * exactly one of these in closure scope and mutates it directly — every
  * exposed method (mount / unmount / update) reads or writes a field here.
@@ -227,7 +215,6 @@ export function createWidget(initialOptions: PayLaterOptions): WidgetInstance {
  */
 function _mergeDefaults(opts: PayLaterOptions): PayLaterOptions {
   return {
-    ...DEFAULT_OPTIONS,
     ...opts,
     theme: { mode: "auto", ...opts.theme },
     custody: opts.custody ?? { mode: "self" },
