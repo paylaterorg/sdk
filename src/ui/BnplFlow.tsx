@@ -550,6 +550,7 @@ export function BnplFlow({
   // target, still inside the Shadow DOM).
   if (tokenCheck === "invalid" || tokenCheck === "unreachable") {
     const isUnreachable = tokenCheck === "unreachable";
+
     return (
       <div className="pl-tile">
         <header className="pl-tile-header">
