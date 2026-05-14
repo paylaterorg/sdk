@@ -4,7 +4,7 @@
 
 Drop-in widget that lets your customers buy USDT and settle the bill within 30 days, signed with their national eID. Free for partner platforms — PayLater is compensated on the consumer side. No card-network exposure, no chargeback risk on your books.
 
-[paylater.dev](https://paylater.dev) · [Get sandbox keys](https://paylater.dev) · [Contact us](mailto:contact@paylater.dev)
+[paylater.dev](https://paylater.dev) · [Create developer account](https://paylater.dev/register) · [Contact us](mailto:contact@paylater.dev)
 
 ---
 
@@ -22,7 +22,12 @@ bun add @paylater/sdk
 
 The React adapter (`@paylater/sdk/react`) declares `react` and `react-dom` as **optional peer dependencies** — install them only if you use it. The vanilla entry point (`@paylater/sdk`) has zero runtime dependencies on your end.
 
-You'll also need a sandbox key (`pk_test_*`) to render the widget without warnings — issued for free at [paylater.dev](https://paylater.dev).
+You'll also need a sandbox key (`pk_test_*`) to render the widget without warnings:
+
+1. Create a free developer account at [paylater.dev/register](https://paylater.dev/register) and verify your email.
+2. In the dashboard, click **Create test token** and copy the `pk_test_*` issued once. That's it — drop the key into your widget and you're integrated.
+
+Production keys (`pk_live_*`) are issued after a short partner call — book it from the dashboard once your sandbox integration looks right.
 
 ## Quick start
 
@@ -299,7 +304,7 @@ Vite serves it on `http://localhost:5174`. Toggle the host-page theme at the top
 
 #### API key
 
-The showcase reads its sandbox key from `VITE_PAYLATER_API_KEY` in `examples/all-cases/.env`. The `.env.example` file ships with a placeholder — replace it with your own `pk_test_*` key (issued from [paylater.dev](https://paylater.dev)) to clear the widget's "Provide a valid `pk_test_*` API key" warning. Without a `.env`, the showcase falls back to a placeholder so the layout still renders, but the Continue button stays disabled with the warning shown.
+The showcase reads its sandbox key from `VITE_PAYLATER_API_KEY` in `examples/all-cases/.env`. The `.env.example` file ships with a placeholder — replace it with your own `pk_test_*` key (issued from [paylater.dev/register](https://paylater.dev/register)) to clear the widget's "Provide a valid `pk_test_*` API key" warning. Without a `.env`, the showcase falls back to a placeholder so the layout still renders, but the Continue button stays disabled with the warning shown.
 
 #### What's covered
 
