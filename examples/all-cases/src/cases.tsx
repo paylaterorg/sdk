@@ -10,6 +10,7 @@
 
 import { PayLaterWidget } from "@paylater/sdk/react";
 import { type ReactNode } from "react";
+import { BuyButtonDemo } from "./demos/BuyButtonDemo";
 import { EventsDemo } from "./demos/EventsDemo";
 import { LiveUpdateDemo } from "./demos/LiveUpdateDemo";
 
@@ -433,6 +434,29 @@ export const CASES: Case[] = [
   );
 }`,
     Demo: () => <LiveUpdateDemo />,
+  },
+  {
+    id: "deferred-mount",
+    title: "Deferred mount (CTA-gated)",
+    description:
+      "The widget isn't rendered until the customer taps the CTA. Open DevTools → Network and watch: no `/v1/tokens/validate` call happens at page load. The request fires only when the widget actually mounts. Useful pattern for landing pages and modal-driven checkout flows; also handy for verifying the on-mount key validation behavior.",
+    code: `function BuyButton() {
+  const [open, setOpen] = useState(false);
+
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)}>Buy with PayLater</button>
+    );
+  }
+
+  return (
+    <>
+      <PayLaterWidget apiKey="pk_test_examplekey1234567890" />
+      <button onClick={() => setOpen(false)}>Hide widget (unmount)</button>
+    </>
+  );
+}`,
+    Demo: () => <BuyButtonDemo />,
   },
   {
     id: "events",

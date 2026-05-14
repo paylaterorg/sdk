@@ -420,6 +420,58 @@ p {
   align-items: stretch;
 }
 
+/* Deferred-mount demo — CTA gates the widget mount. */
+.buy-button-demo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 22rem;
+  max-width: 100%;
+  align-items: stretch;
+}
+
+.buy-button-cta {
+  appearance: none;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  padding: 0.875rem 1.25rem;
+  border: 0;
+  border-radius: 0.75rem;
+  background: oklch(76.02% 0.18901 132.705);
+  color: oklch(0.18 0.04 131);
+  cursor: pointer;
+  transition:
+    transform 120ms ease,
+    filter 120ms ease;
+}
+
+.buy-button-cta:hover {
+  filter: brightness(0.96);
+}
+
+.buy-button-cta:active {
+  transform: translateY(1px);
+}
+
+.buy-button-hide {
+  appearance: none;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.4rem 0.75rem;
+  align-self: center;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  background: var(--card);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.buy-button-hide:hover {
+  color: inherit;
+}
+
 /* Live-update demo — three brand-color buttons stacked above the widget. */
 .live-update-demo {
   display: flex;
