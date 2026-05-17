@@ -98,8 +98,20 @@ function PayLaterWidgetImpl(
     instanceRef.current = instance;
 
     return () => {
-      instance.unmount();
-      instanceRef.current = null;
+      // Defer teardown to a microtask. `instance.unmount()` synchronously
+      // unmounts our nested React root; calling it inside this cleanup runs it
+      // *during* the host app's render/commit (React 19 StrictMode's dev
+      // double-invoke, or unmounting the subtree on a route change), which
+      // trips React's "Attempted to synchronously unmount a root while React
+      // was already rendering" warning and the race it warns about. Running it
+      // on the next microtask lets the outer commit finish first. The captured
+      // `instance` makes a StrictMode remount safe: the throwaway instance is
+      // torn down without clobbering the freshly mounted one.
+      const stale = instance;
+      queueMicrotask(() => {
+        stale.unmount();
+        if (instanceRef.current === stale) instanceRef.current = null;
+      });
     };
     // Mount only once. Reactive options are patched by the next effect.
     // eslint-disable-next-line react-hooks/exhaustive-deps
