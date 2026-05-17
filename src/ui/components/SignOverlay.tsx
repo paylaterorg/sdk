@@ -97,13 +97,13 @@ export function SignOverlay({
               <>
                 <ScanIcon />
                 <strong>QR scanned</strong>
-                <span style={{ color: "var(--paylater-muted)" }}>Open {country.eidAppName}…</span>
+                <span style={{ color: "var(--paylater-muted)" }}>Open {country.eidAppName}...</span>
               </>
             )}
             {phase === "signing" && (
               <>
                 <span className="pl-spinner" />
-                <strong>Waiting for signature…</strong>
+                <strong>Waiting for signature...</strong>
                 <span style={{ color: "var(--paylater-muted)" }}>
                   Confirm in {country.eidAppName}
                 </span>

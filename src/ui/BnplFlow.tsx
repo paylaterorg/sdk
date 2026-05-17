@@ -747,7 +747,7 @@ export function BnplFlow({
               onClick={() => setPhase("delivery")}
               disabled={!apiKeyValid || !amountValid || tokenCheckBlocking}
             >
-              {tokenCheck === "checking" ? "Verifying…" : "Continue"}
+              {tokenCheck === "checking" ? "Verifying..." : "Continue"}
               <ArrowRightIcon />
             </button>
 
@@ -759,7 +759,7 @@ export function BnplFlow({
 
             {apiKeyValid && tokenCheck === "checking" && (
               <p className="pl-caption" style={{ textAlign: "center" }}>
-                Verifying your API key with PayLater…
+                Verifying your API key with PayLater...
               </p>
             )}
           </div>
@@ -798,10 +798,10 @@ export function BnplFlow({
                   rows={2}
                   placeholder={
                     network === "solana"
-                      ? "7xKXtg2C…rUq"
+                      ? "7xKXtg2C...rUq"
                       : network === "tron"
-                        ? "TQrX…dRm"
-                        : "0xAbC123…789"
+                        ? "TQrX...dRm"
+                        : "0xAbC123...789"
                   }
                   value={walletAddress}
                   onChange={(e) => setWalletAddress(e.target.value)}
