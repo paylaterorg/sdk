@@ -94,22 +94,31 @@ function PayLaterWidgetImpl(
       },
     };
 
-    const instance = PayLater.init(initial).mount(hostRef.current);
+    // Mount into a fresh child element, never `hostRef.current` directly.
+    // `attachShadowHost` *reuses* an existing shadow root, so under React 19
+    // StrictMode (dev double-invoke: mount → cleanup → mount) the throwaway
+    // instance and the real one would share one shadow root on the host. The
+    // deferred teardown below then runs `shadow.innerHTML = ""` on that shared
+    // root and wipes the *live* widget — blank in dev, fine in prod (no double
+    // invoke). A per-mount child element gives each instance its own shadow
+    // host, so a stale teardown can never touch the surviving instance.
+    const mountEl = document.createElement("div");
+    hostRef.current.appendChild(mountEl);
+
+    const instance = PayLater.init(initial).mount(mountEl);
     instanceRef.current = instance;
 
     return () => {
-      // Defer teardown to a microtask. `instance.unmount()` synchronously
-      // unmounts our nested React root; calling it inside this cleanup runs it
-      // *during* the host app's render/commit (React 19 StrictMode's dev
-      // double-invoke, or unmounting the subtree on a route change), which
-      // trips React's "Attempted to synchronously unmount a root while React
-      // was already rendering" warning and the race it warns about. Running it
-      // on the next microtask lets the outer commit finish first. The captured
-      // `instance` makes a StrictMode remount safe: the throwaway instance is
-      // torn down without clobbering the freshly mounted one.
+      // Defer teardown so the nested React root isn't unmounted *during* the
+      // host app's render/commit (StrictMode double-invoke, or a route-change
+      // unmount), which trips React's "Attempted to synchronously unmount a
+      // root while React was already rendering" warning and the race it warns
+      // about. The captured `instance` + its own `mountEl` make this safe: the
+      // throwaway instance and its DOM are torn down in isolation.
       const stale = instance;
       queueMicrotask(() => {
         stale.unmount();
+        mountEl.remove();
         if (instanceRef.current === stale) instanceRef.current = null;
       });
     };
