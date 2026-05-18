@@ -25,7 +25,7 @@ The React adapter (`@paylater/sdk/react`) declares `react` and `react-dom` as **
 You'll also need a sandbox key (`pk_test_*`) to render the widget without warnings:
 
 1. Create a free developer account at [paylater.dev/register](https://paylater.dev/register) and verify your email.
-2. In the dashboard, click **Create test token** and copy the `pk_test_*` issued once. That's it — drop the key into your widget and you're integrated.
+2. In the dashboard, click **Create test token** and copy the `pk_test_*` key. It's a publishable key, so it stays visible under **API Keys** — grab it again anytime. That's it — drop the key into your widget and you're integrated.
 
 Production keys (`pk_live_*`) are issued after a short partner call — book it from the dashboard once your sandbox integration looks right.
 
