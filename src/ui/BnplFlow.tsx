@@ -72,7 +72,7 @@ let _scrollLockPrevHtml = "";
  * @dev Fallback base URL for the on-mount token check when the consumer
  * didn't pass `apiBaseUrl`.
  */
-const DEFAULT_API_BASE_URL = "http://localhost:3001";
+const DEFAULT_API_BASE_URL = "https://api.paylater.dev";
 
 /**
  * @dev State of the on-mount remote `apiKey` validation.
