@@ -22,7 +22,7 @@
  * problems while still failing closed on a definitive rejection.
  */
 export type ValidateApiKeyResult =
-  | { valid: true; mode: "test" | "live"; merchant?: { name?: string } }
+  | { valid: true; mode: "test" | "live"; signalNonce?: string; merchant?: { name?: string } }
   | { valid: false; reason: string }
   | { unreachable: true };
 

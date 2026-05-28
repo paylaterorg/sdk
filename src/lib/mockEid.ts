@@ -3,6 +3,8 @@
  * provider in v0.x — it auto-advances through scan → scanned → signing →
  * verified phases on a fixed timer to give partners a fully interactive
  * preview without bringing real Scrive credentials into the SDK bundle.
+ *
+ * TODO (v1.0): replace mock flow with real Scrive eID integration when using the live widget in production.
  */
 
 import type { CountryCode } from "../types";

@@ -72,7 +72,7 @@ let _scrollLockPrevHtml = "";
  * @dev Fallback base URL for the on-mount token check when the consumer
  * didn't pass `apiBaseUrl`.
  */
-const DEFAULT_API_BASE_URL = "https://api.paylater.dev";
+const DEFAULT_API_BASE_URL = "http://localhost:3001";
 
 /**
  * @dev State of the on-mount remote `apiKey` validation.
@@ -89,6 +89,22 @@ const DEFAULT_API_BASE_URL = "https://api.paylater.dev";
  *                   fires. We refuse to start a checkout we can't verify.
  */
 type TokenCheck = "idle" | "checking" | "valid" | "invalid" | "unreachable";
+
+function signalNonceStorageKey(apiKey: string): string {
+  return `paylater:widget:signal-nonce:${apiKey.slice(0, 16)}`;
+}
+
+async function postWidgetSuccess(apiBaseUrl: string, signalNonce: string): Promise<void> {
+  try {
+    await fetch(`${apiBaseUrl.replace(/\/+$/, "")}/v1/widget-signals/success`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ signalNonce }),
+    });
+  } catch {
+    // Fire-and-forget — success signal failure must not break the widget UX.
+  }
+}
 
 const AMOUNT_PRESETS: Record<Currency, number[]> = {
   SEK: [500, 1000, 2500, 5000],
@@ -304,6 +320,14 @@ export function BnplFlow({
   const pendingTokenCheck: TokenCheck = !apiKeyValid ? "idle" : "checking";
 
   const [tokenCheck, setTokenCheck] = useState<TokenCheck>(pendingTokenCheck);
+  const [validatedMode, setValidatedMode] = useState<"test" | "live" | null>(null);
+  const [signalNonce, setSignalNonce] = useState<string | null>(() => {
+    try {
+      return sessionStorage.getItem(signalNonceStorageKey(options.apiKey));
+    } catch {
+      return null;
+    }
+  });
 
   // Reactive re-validation. If the partner swaps `apiKey` / `apiBaseUrl` via
   // `instance.update(...)`, snap the check state back to its pending baseline
@@ -316,6 +340,8 @@ export function BnplFlow({
     setPrevApiKey(options.apiKey);
     setPrevApiBaseUrl(apiBaseUrl);
     setTokenCheck(pendingTokenCheck);
+    setValidatedMode(null);
+    setSignalNonce(null);
   }
 
   // `onError` may change identity across renders (the React adapter wraps it
@@ -339,6 +365,15 @@ export function BnplFlow({
 
       if ("valid" in result && result.valid) {
         setTokenCheck("valid");
+        setValidatedMode(result.mode);
+        if (result.signalNonce) {
+          setSignalNonce(result.signalNonce);
+          try {
+            sessionStorage.setItem(signalNonceStorageKey(options.apiKey), result.signalNonce);
+          } catch {
+            // sessionStorage may be blocked in sandboxed iframes — ignore.
+          }
+        }
         return;
       }
 
@@ -392,6 +427,8 @@ export function BnplFlow({
     merchantCustody,
     options,
     onSuccess,
+    signalNonce,
+    apiBaseUrl,
   });
   useEffect(() => {
     signCtxRef.current = {
@@ -404,6 +441,8 @@ export function BnplFlow({
       merchantCustody,
       options,
       onSuccess,
+      signalNonce,
+      apiBaseUrl,
     };
   });
 
@@ -458,6 +497,15 @@ export function BnplFlow({
             ? { merchantUserId: ctx.options.custody.merchantUserId }
             : {}),
         };
+
+        if (ctx.signalNonce) {
+          void postWidgetSuccess(ctx.apiBaseUrl, ctx.signalNonce);
+          try {
+            sessionStorage.removeItem(signalNonceStorageKey(ctx.options.apiKey));
+          } catch {
+            // ignore
+          }
+        }
 
         setSignPhase("idle");
         setPhase("done");
@@ -612,6 +660,25 @@ export function BnplFlow({
           </span>
         )}
         <span style={{ display: "inline-flex", gap: "0.375rem", alignItems: "center" }}>
+          {validatedMode === "test" && (
+            <span
+              className="pl-test-chip"
+              aria-label="Test mode"
+              style={{
+                fontSize: "0.625rem",
+                fontWeight: 700,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                padding: "0.125rem 0.375rem",
+                borderRadius: "0.25rem",
+                background: "var(--paylater-accent, #f59e0b)",
+                color: "#000",
+                lineHeight: 1.4,
+              }}
+            >
+              TEST
+            </span>
+          )}
           <button
             type="button"
             className="pl-country-chip"

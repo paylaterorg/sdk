@@ -281,6 +281,40 @@ The object returned by `PayLater.init()` (vanilla SDK only — the React adapter
 | `network_error`         | Lost connectivity during a backend call (including the on-mount key check, which blocks the flow) |
 | `unknown`               | Catch-all — `cause` is populated                                                                  |
 
+## Verifying webhooks (Node)
+
+When a customer signs, PayLater posts the agreement to your configured webhook URL with `X-PayLater-Signature: t=<unix>,v1=<hex>`. The `@paylater/sdk/webhooks` subpath ships a Node-only helper that verifies and parses the event for you. It is **never** loaded by the browser bundle — bundlers that resolve `@paylater/sdk` get the widget code; only an explicit Node import of `@paylater/sdk/webhooks` pulls in the verifier.
+
+Event types: `agreement.signed`, `test.ping`.
+
+```ts
+import express from "express";
+import { constructEvent, PayLaterSignatureVerificationError } from "@paylater/sdk/webhooks";
+
+const app = express();
+
+// IMPORTANT: read the raw bytes — verification HMACs the exact body.
+app.post("/paylater/webhooks", express.raw({ type: "application/json" }), (req, res) => {
+  try {
+    const event = constructEvent(
+      req.body, // Buffer | string
+      req.header("x-paylater-signature") ?? "",
+      process.env.PAYLATER_SK!, // sk_test_* or sk_live_*
+    );
+
+    if (event.type === "agreement.signed") {
+      // creditUser(event.data) ...
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    if (err instanceof PayLaterSignatureVerificationError) return res.status(400).end();
+    throw err;
+  }
+});
+```
+
+Default tolerance is 300 seconds, two-sided — partner-ahead OR PayLater-ahead skew both fail correctly.
+
 ## Try it locally
 
 A live showcase of every SDK configuration lives at `examples/all-cases/` — a Vite React app that renders each scenario alongside the exact code that produced it (and a one-tap copy button on every snippet).

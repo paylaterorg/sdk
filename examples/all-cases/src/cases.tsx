@@ -13,6 +13,7 @@ import { type ReactNode } from "react";
 import { BuyButtonDemo } from "./demos/BuyButtonDemo";
 import { EventsDemo } from "./demos/EventsDemo";
 import { LiveUpdateDemo } from "./demos/LiveUpdateDemo";
+import { WebhookVerifyDemo } from "./demos/WebhookVerifyDemo";
 
 /**
  * @dev Sandbox key used for every showcased widget. Pulled from
@@ -23,6 +24,16 @@ import { LiveUpdateDemo } from "./demos/LiveUpdateDemo";
  * real key is supplied.
  */
 const TEST_KEY: string = import.meta.env.VITE_PAYLATER_API_KEY ?? "pk_test_examplekey1234567890";
+
+/**
+ * @dev Optional `pk_live_*` key for the live-mode showcase. Live keys are
+ * issued only after admin grants `canCreateLiveTokens` on the partner's
+ * account. When unset, the showcase renders with a placeholder that the
+ * api will reject with `not_found` — the widget falls back to its
+ * "Provide a valid pk_..." warning, which still demonstrates the validation
+ * path.
+ */
+const LIVE_KEY: string = import.meta.env.VITE_PAYLATER_LIVE_KEY ?? "pk_live_examplekey1234567890";
 
 /**
  * @dev Shape of one showcased configuration scenario.
@@ -470,6 +481,65 @@ export const CASES: Case[] = [
   onPhaseChange={(phase) => console.log("phase →", phase)}
 />`,
     Demo: () => <EventsDemo />,
+  },
+  {
+    id: "pk-live-mode",
+    title: "Production key (`pk_live_*`)",
+    description:
+      "Same widget, same code — only the key prefix changes. Live mode validates against the production token collection and still runs the existing mockEid signing flow; webhook events fired from this session carry `livemode: true` so your backend can route accordingly. The `TEST` chip in the widget header is suppressed when the validated mode is `live`. Provision a real `pk_live_*` via the dashboard once admin grants live access on your account; set it as `VITE_PAYLATER_LIVE_KEY` in `.env` to see this case render against your own key.",
+    code: `<PayLaterWidget apiKey="pk_live_xxxxxxxxxxxxxxxxxxxxx" />`,
+    Demo: () => <PayLaterWidget apiKey={LIVE_KEY} />,
+  },
+  {
+    id: "webhook-verify-node",
+    title: "Verify webhooks on your Node backend (`@paylater/sdk/webhooks`)",
+    description:
+      "PayLater POSTs each event to the URL configured in your dashboard with an `X-PayLater-Signature: t=<unix>,v1=<hex>` header. The SDK ships a Node-only helper that parses the header, computes the HMAC, and either returns the parsed event or throws a typed error. Default 5-minute two-sided tolerance window guards against both clock skew and replay. The helper lives at the `@paylater/sdk/webhooks` sub-import — it is excluded from browser bundles via the package `exports` map (it depends on `node:crypto`).",
+    code: `// Express handler — same pattern works for Fastify, Hono, or a
+// serverless function. The raw body is required (not the parsed JSON)
+// because the signature is computed over the exact bytes we sent.
+import express from "express";
+import {
+  constructEvent,
+  PayLaterSignatureVerificationError,
+} from "@paylater/sdk/webhooks";
+
+const app = express();
+const SECRET = process.env.PAYLATER_WEBHOOK_SECRET!; // sk_test_... or sk_live_...
+
+app.post(
+  "/webhooks/paylater",
+  express.raw({ type: "application/json" }),
+  (req, res) => {
+    try {
+      const event = constructEvent(
+        req.body.toString("utf8"),
+        req.header("X-PayLater-Signature") ?? "",
+        SECRET,
+        // { tolerance: 300 }  // optional; default is 300s, two-sided
+      );
+
+      switch (event.type) {
+        case "agreement.signed":
+          // event.livemode tells you test vs production
+          // event.data carries ref, usdt amount, merchantUserId, etc.
+          handleAgreementSigned(event);
+          break;
+        case "test.ping":
+          // Fired by the dashboard "Send test event" button
+          break;
+      }
+      res.status(200).end();
+    } catch (err) {
+      if (err instanceof PayLaterSignatureVerificationError) {
+        // err.reason is "invalid_header" | "signature_mismatch" | "timestamp_outside_tolerance"
+        return res.status(400).end();
+      }
+      throw err;
+    }
+  },
+);`,
+    Demo: () => <WebhookVerifyDemo />,
   },
 ];
 
