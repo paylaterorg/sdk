@@ -94,15 +94,34 @@ function signalNonceStorageKey(apiKey: string): string {
   return `paylater:widget:signal-nonce:${apiKey.slice(0, 16)}`;
 }
 
-async function postWidgetSuccess(apiBaseUrl: string, signalNonce: string): Promise<void> {
+async function sendSuccessSignal(apiBaseUrl: string, signalNonce: string): Promise<boolean> {
+  const res = await fetch(`${apiBaseUrl.replace(/\/+$/, "")}/v1/widget-signals/success`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ signalNonce }),
+  });
+  return res.ok;
+}
+
+async function postWidgetSuccess(
+  apiBaseUrl: string,
+  apiKey: string,
+  signalNonce: string | null,
+): Promise<void> {
   try {
-    await fetch(`${apiBaseUrl.replace(/\/+$/, "")}/v1/widget-signals/success`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ signalNonce }),
-    });
+    // Happy path: the nonce minted at widget init is still valid.
+    if (signalNonce && (await sendSuccessSignal(apiBaseUrl, signalNonce))) return;
+
+    // The stored nonce is missing, or the API rejected it as expired/consumed.
+    // A nonce lives ~10 min; real eID signing can take longer, so a slow
+    // customer would otherwise see success while the merchant never receives
+    // `agreement.signed`. Re-validate the key to mint a fresh nonce bound to the
+    // same (user, key, env) and retry once.
+    const result = await validateApiKey(apiKey, apiBaseUrl);
+    if ("valid" in result && result.valid && result.signalNonce)
+      await sendSuccessSignal(apiBaseUrl, result.signalNonce);
   } catch {
-    // Fire-and-forget — success signal failure must not break the widget UX.
+    // Fire-and-forget — a signaling failure must never break the widget UX.
   }
 }
 
@@ -498,13 +517,13 @@ export function BnplFlow({
             : {}),
         };
 
-        if (ctx.signalNonce) {
-          void postWidgetSuccess(ctx.apiBaseUrl, ctx.signalNonce);
-          try {
-            sessionStorage.removeItem(signalNonceStorageKey(ctx.options.apiKey));
-          } catch {
-            // ignore
-          }
+        // Fire even when the stored nonce is null/stale — postWidgetSuccess
+        // re-mints a fresh one if needed so the webhook isn't silently dropped.
+        void postWidgetSuccess(ctx.apiBaseUrl, ctx.options.apiKey, ctx.signalNonce);
+        try {
+          sessionStorage.removeItem(signalNonceStorageKey(ctx.options.apiKey));
+        } catch {
+          // ignore
         }
 
         setSignPhase("idle");
