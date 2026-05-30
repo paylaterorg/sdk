@@ -94,11 +94,32 @@ function signalNonceStorageKey(apiKey: string): string {
   return `paylater:widget:signal-nonce:${apiKey.slice(0, 16)}`;
 }
 
-async function sendSuccessSignal(apiBaseUrl: string, signalNonce: string): Promise<boolean> {
+/**
+ * @dev Snapshot of the just-signed agreement, sent to the success endpoint so it
+ * can be echoed into the `agreement.signed` webhook. Mirrors `SuccessEvent` plus
+ * the merchant `description`. The server treats it as untrusted/informational.
+ */
+interface AgreementSnapshot {
+  ref: string;
+  amount: number;
+  usdt: number;
+  country: string;
+  network: string;
+  custody: "self" | "merchant";
+  recipient: string | null;
+  merchantUserId?: string;
+  description?: string;
+}
+
+async function sendSuccessSignal(
+  apiBaseUrl: string,
+  signalNonce: string,
+  agreement: AgreementSnapshot,
+): Promise<boolean> {
   const res = await fetch(`${apiBaseUrl.replace(/\/+$/, "")}/v1/widget-signals/success`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ signalNonce }),
+    body: JSON.stringify({ signalNonce, agreement }),
   });
   return res.ok;
 }
@@ -107,10 +128,11 @@ async function postWidgetSuccess(
   apiBaseUrl: string,
   apiKey: string,
   signalNonce: string | null,
+  agreement: AgreementSnapshot,
 ): Promise<void> {
   try {
     // Happy path: the nonce minted at widget init is still valid.
-    if (signalNonce && (await sendSuccessSignal(apiBaseUrl, signalNonce))) return;
+    if (signalNonce && (await sendSuccessSignal(apiBaseUrl, signalNonce, agreement))) return;
 
     // The stored nonce is missing, or the API rejected it as expired/consumed.
     // A nonce lives ~10 min; real eID signing can take longer, so a slow
@@ -119,7 +141,7 @@ async function postWidgetSuccess(
     // same (user, key, env) and retry once.
     const result = await validateApiKey(apiKey, apiBaseUrl);
     if ("valid" in result && result.valid && result.signalNonce)
-      await sendSuccessSignal(apiBaseUrl, result.signalNonce);
+      await sendSuccessSignal(apiBaseUrl, result.signalNonce, agreement);
   } catch {
     // Fire-and-forget — a signaling failure must never break the widget UX.
   }
@@ -517,9 +539,25 @@ export function BnplFlow({
             : {}),
         };
 
+        // Carry the agreement details (incl. merchantUserId + description) to the
+        // webhook so the partner can attribute/reconcile the deposit.
+        const merchantDescription =
+          ctx.options.custody?.mode === "merchant" ? ctx.options.custody.description : undefined;
+        const agreement: AgreementSnapshot = {
+          ref: event.ref,
+          amount: event.amount,
+          usdt: event.usdt,
+          country: event.country,
+          network: event.network,
+          custody: event.custody,
+          recipient: event.recipient,
+          ...(event.merchantUserId ? { merchantUserId: event.merchantUserId } : {}),
+          ...(merchantDescription ? { description: merchantDescription } : {}),
+        };
+
         // Fire even when the stored nonce is null/stale — postWidgetSuccess
         // re-mints a fresh one if needed so the webhook isn't silently dropped.
-        void postWidgetSuccess(ctx.apiBaseUrl, ctx.options.apiKey, ctx.signalNonce);
+        void postWidgetSuccess(ctx.apiBaseUrl, ctx.options.apiKey, ctx.signalNonce, agreement);
         try {
           sessionStorage.removeItem(signalNonceStorageKey(ctx.options.apiKey));
         } catch {
