@@ -1,7 +1,8 @@
 /**
  * @dev Absolutely-positioned overlay rendered inside the tile body during the
- * sign phase. Drives the auto-advancing fake-eID state machine: scan →
- * scanned → signing → verified.
+ * sign phase in test mode. Drives the auto-advancing mock-eID state machine:
+ * scan → scanned → signing → verified. Live mode redirects to Scrive's hosted
+ * page instead and never renders this overlay.
  */
 
 import QRCode from "qrcode";

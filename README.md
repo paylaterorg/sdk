@@ -130,7 +130,7 @@ export function Deposit() {
 }
 ```
 
-> **Authoritative settlement runs server-side.** The publishable key (`pk_*`) is safe to ship in the browser — it can't move money. When the customer signs, PayLater posts the signed credit agreement to your webhook endpoint, signed with your secret key (`sk_*`). That webhook is what actually credits the user's balance and flags the deposit as PayLater-funded. Treat the client-side `success` event as a UX cue, not as authorization.
+> **Authoritative settlement runs server-side.** The publishable key (`pk_*`) is safe to ship in the browser — it can't move money. When the customer signs, PayLater posts the signed credit agreement to your webhook endpoint, signed with your secret key (`sk_*`). That webhook is what actually credits the user's balance and flags the deposit as PayLater-funded. Treat the client-side `success` event as a UX cue, not as authorization. In live mode this is doubly true: the widget redirects to Scrive for the real eID signature, and the only authoritative confirmation is the server-verified `agreement.signed` webhook — see [Live vs test signing](#live-vs-test-signing) below.
 
 Prefer to receive USDT on-chain into your hot wallet instead of crediting off-chain? Pass `settlementAddress` + `settlementNetwork` together — the end-user UX is identical, only PayLater's settlement path changes.
 
@@ -141,7 +141,28 @@ The SDK renders inside a **Shadow DOM** attached to your mount target. That mean
 - ✅ Your CSS can never break the widget — every selector is isolated
 - ✅ The widget's CSS can never leak into your page — no global pollution
 - ✅ Theming flows through CSS custom properties on the `:host`, so live updates are cheap
-- ✅ The widget renders in your domain — no redirects, no swap funnels, no drop-off
+- ✅ Amount, delivery, and the test-mode preview all render in your domain — no swap funnels, no drop-off
+
+The one exception is the **live eID signature**: legally binding eID signing happens on the provider's hosted page, so live mode hands off to Scrive for the signature step and returns the customer to your page afterward. See below.
+
+## Live vs test signing
+
+The signing step behaves differently depending on which publishable key the widget was loaded with — and the widget figures this out for you when it verifies the key on mount.
+
+|                            | **Test mode** (`pk_test_*`)                                                                                        | **Live mode** (`pk_live_*`)                                                                                                                          |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| eID signature              | Mock — the widget auto-advances scan → scanned → signing → verified on a timer. No real eID provider is contacted. | Real Scrive eID. The widget calls PayLater to create the signing document, then **redirects** the customer to Scrive's hosted signing page.          |
+| `agreement.signed` webhook | Emitted from the client success path (`livemode: false`).                                                          | Emitted **only** after PayLater independently verifies the signed-and-sealed document with Scrive (`livemode: true`). The browser never triggers it. |
+| On return                  | The widget shows the success summary.                                                                              | The widget shows a **pending** screen — the credit lands when the verified webhook arrives, not when the page reloads.                               |
+
+In live mode:
+
+1. The customer taps **Sign with {eID}**. The widget POSTs the agreement details to `POST /v1/signing-sessions` (authorized with the `pk_live_*` key) and receives the customer's hosted Scrive signing URL.
+2. Before navigating away, the widget clears its own local client state so nothing stale is replayed on return, then redirects to Scrive.
+3. The customer signs on Scrive's page using their national eID and is redirected back to your page (the same URL, with a `paylater_signing=return` marker the widget uses to show the pending screen).
+4. Scrive notifies PayLater; PayLater fetches the authoritative document state and, only if it is signed and sealed, emits the server-verified `agreement.signed` webhook to your endpoint. **That webhook — not the redirect back — is what credits the customer.**
+
+No Scrive credentials are ever shipped in the browser bundle; the SDK only ever talks to the PayLater API.
 
 ## API
 
@@ -314,6 +335,12 @@ app.post("/paylater/webhooks", express.raw({ type: "application/json" }), (req, 
 ```
 
 Default tolerance is 300 seconds, two-sided — partner-ahead OR PayLater-ahead skew both fail correctly.
+
+### `merchantUserId` is not eID-verified — reconcile it
+
+`merchantUserId` is a partner-supplied correlation id you pass to the widget and that PayLater echoes back unchanged on the `agreement.signed` webhook. It is **not** verified by eID/Scrive: the signature proves the human identity that signed, but mapping that human to your own account is your responsibility. Always reconcile the signed agreement against your own records before crediting — never treat `merchantUserId` as proof of who signed.
+
+In live mode the `agreement.signed` payload also carries a `fieldSources` map. The agreement money fields are read back from the sealed signed document, and `fieldSources` reports per field whether the emitted value came from the signed document (`"scrive"`) or the server snapshot fallback (`"snapshot"`).
 
 ## Try it locally
 

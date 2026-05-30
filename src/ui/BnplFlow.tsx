@@ -10,6 +10,12 @@ import { convertAmount, formatCompact, formatMoney, toUsdt } from "../lib/format
 import { MOCK_ID_NUMBERS, MOCK_NAMES } from "../lib/mockEid";
 import { NETWORKS } from "../lib/networks";
 import { formatDate, generateReference, thirtyDaysFromNow } from "../lib/refs";
+import {
+  buildReturnUrl,
+  hasSigningReturnMarker,
+  runLiveSigningRedirect,
+  startSigningSession,
+} from "../lib/scriveClient";
 import { validateApiKey } from "../lib/tokenClient";
 import { EMAIL_RE, isValidApiKey, validateAddress } from "../lib/validation";
 import type {
@@ -164,13 +170,15 @@ const AMOUNT_PRESETS: Record<Currency, number[]> = {
 export type Phase = "amount" | "delivery" | "sign" | "done";
 
 /**
- * @dev Sub-phase of the eID signing overlay.
+ * @dev Sub-phase of the eID signing overlay, used only in test mode.
  *
- * The widget never actually contacts an eID provider — it auto-advances
- * scan → scanned → signing → verified on a fixed timer to give partners a
- * realistic preview without bringing real Scrive credentials into the bundle.
+ * In test mode the widget auto-advances scan → scanned → signing → verified on
+ * a fixed timer to give partners a realistic preview without bringing real
+ * Scrive credentials into the bundle. In live mode the widget instead redirects
+ * the customer to Scrive's hosted signing page, so this state machine never
+ * runs and `redirecting` is the only sub-phase reached.
  */
-export type SignPhase = "idle" | "scan" | "scanned" | "signing" | "verified";
+export type SignPhase = "idle" | "scan" | "scanned" | "signing" | "verified" | "redirecting";
 
 /**
  * @dev Props the BnplFlow component accepts.
@@ -233,7 +241,16 @@ export function BnplFlow({
     options.custody?.mode === "merchant" && Boolean(options.custody.settlementAddress);
   const showSettlementNetwork = !merchantCustody || merchantSettlementOnChain;
 
-  const [phase, setPhaseInternal] = useState<Phase>("amount");
+  // Start on the sign phase when the page was loaded via Scrive's post-signing
+  // return redirect, so the customer lands on the pending screen instead of
+  // restarting at the amount step.
+  const [phase, setPhaseInternal] = useState<Phase>(() => {
+    try {
+      return hasSigningReturnMarker(window.location.search) ? "sign" : "amount";
+    } catch {
+      return "amount";
+    }
+  });
   const [countryCode, setCountryCode] = useState<CountryCode>(initialCountry);
   const country = COUNTRIES[countryCode];
   const [countryPickerOpen, setCountryPickerOpen] = useState(false);
@@ -370,6 +387,19 @@ export function BnplFlow({
     }
   });
 
+  // True when the page was loaded with the signing return marker, i.e. the
+  // customer just came back from Scrive's hosted signing page in live mode. We
+  // land them on a pending screen rather than restarting the sign step — the
+  // authoritative credit arrives via the webhook, so the widget never claims
+  // success on its own here.
+  const [returnedFromSigning, setReturnedFromSigning] = useState<boolean>(() => {
+    try {
+      return hasSigningReturnMarker(window.location.search);
+    } catch {
+      return false;
+    }
+  });
+
   // Reactive re-validation. If the partner swaps `apiKey` / `apiBaseUrl` via
   // `instance.update(...)`, snap the check state back to its pending baseline
   // during render (the file's established "adjust state during render"
@@ -470,6 +500,7 @@ export function BnplFlow({
     onSuccess,
     signalNonce,
     apiBaseUrl,
+    validatedMode,
   });
   useEffect(() => {
     signCtxRef.current = {
@@ -484,12 +515,62 @@ export function BnplFlow({
       onSuccess,
       signalNonce,
       apiBaseUrl,
+      validatedMode,
     };
   });
 
-  // Sign phase auto-advance machine.
+  // Build the agreement snapshot from the current sign context. Shared by the
+  // test-mode success signal and the live-mode start-session call so both paths
+  // describe the same purchase to the backend.
+  const buildAgreement = (
+    ctx: typeof signCtxRef.current,
+  ): { event: SuccessEvent; agreement: AgreementSnapshot } => {
+    const merchantSettlementAddress =
+      ctx.options.custody?.mode === "merchant" ? ctx.options.custody.settlementAddress : undefined;
+    const merchantSettlementNetwork =
+      ctx.options.custody?.mode === "merchant" ? ctx.options.custody.settlementNetwork : undefined;
+    const recipient = ctx.merchantCustody
+      ? (merchantSettlementAddress ?? null)
+      : ctx.walletAddress.trim() || ctx.options.prefill?.walletAddress || null;
+    const settledNetwork: Network = ctx.merchantCustody
+      ? (merchantSettlementNetwork ?? ctx.options.prefill?.network ?? ctx.network)
+      : ctx.network;
+
+    const event: SuccessEvent = {
+      ref: ctx.reference,
+      network: settledNetwork,
+      usdt: ctx.usdt,
+      amount: ctx.amount,
+      country: ctx.countryCode,
+      custody: ctx.merchantCustody ? "merchant" : "self",
+      recipient,
+      ...(ctx.merchantCustody && ctx.options.custody?.mode === "merchant"
+        ? { merchantUserId: ctx.options.custody.merchantUserId }
+        : {}),
+    };
+
+    const merchantDescription =
+      ctx.options.custody?.mode === "merchant" ? ctx.options.custody.description : undefined;
+    const agreement: AgreementSnapshot = {
+      ref: event.ref,
+      amount: event.amount,
+      usdt: event.usdt,
+      country: event.country,
+      network: event.network,
+      custody: event.custody,
+      recipient: event.recipient,
+      ...(event.merchantUserId ? { merchantUserId: event.merchantUserId } : {}),
+      ...(merchantDescription ? { description: merchantDescription } : {}),
+    };
+
+    return { event, agreement };
+  };
+
+  // Test-mode sign phase auto-advance machine. Live mode never enters these
+  // sub-phases — it redirects to Scrive instead (see the live effect below) —
+  // so this timer chain is a no-op when `redirecting` is the active sub-phase.
   useEffect(() => {
-    if (signPhase === "idle") return;
+    if (signPhase === "idle" || signPhase === "redirecting") return;
 
     let cancelled = false;
 
@@ -510,50 +591,7 @@ export function BnplFlow({
     if (signPhase === "verified")
       return wait(900, () => {
         const ctx = signCtxRef.current;
-
-        const merchantSettlementAddress =
-          ctx.options.custody?.mode === "merchant"
-            ? ctx.options.custody.settlementAddress
-            : undefined;
-        const merchantSettlementNetwork =
-          ctx.options.custody?.mode === "merchant"
-            ? ctx.options.custody.settlementNetwork
-            : undefined;
-        const recipient = ctx.merchantCustody
-          ? (merchantSettlementAddress ?? null)
-          : ctx.walletAddress.trim() || ctx.options.prefill?.walletAddress || null;
-        const settledNetwork: Network = ctx.merchantCustody
-          ? (merchantSettlementNetwork ?? ctx.options.prefill?.network ?? ctx.network)
-          : ctx.network;
-
-        const event: SuccessEvent = {
-          ref: ctx.reference,
-          network: settledNetwork,
-          usdt: ctx.usdt,
-          amount: ctx.amount,
-          country: ctx.countryCode,
-          custody: ctx.merchantCustody ? "merchant" : "self",
-          recipient,
-          ...(ctx.merchantCustody && ctx.options.custody?.mode === "merchant"
-            ? { merchantUserId: ctx.options.custody.merchantUserId }
-            : {}),
-        };
-
-        // Carry the agreement details (incl. merchantUserId + description) to the
-        // webhook so the partner can attribute/reconcile the deposit.
-        const merchantDescription =
-          ctx.options.custody?.mode === "merchant" ? ctx.options.custody.description : undefined;
-        const agreement: AgreementSnapshot = {
-          ref: event.ref,
-          amount: event.amount,
-          usdt: event.usdt,
-          country: event.country,
-          network: event.network,
-          custody: event.custody,
-          recipient: event.recipient,
-          ...(event.merchantUserId ? { merchantUserId: event.merchantUserId } : {}),
-          ...(merchantDescription ? { description: merchantDescription } : {}),
-        };
+        const { event, agreement } = buildAgreement(ctx);
 
         // Fire even when the stored nonce is null/stale — postWidgetSuccess
         // re-mints a fresh one if needed so the webhook isn't silently dropped.
@@ -569,6 +607,61 @@ export function BnplFlow({
         ctx.onSuccess(event);
       });
   }, [signPhase]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Live-mode redirect. Entering `redirecting` asks the API to create the
+  // Scrive document, then hands the customer off to Scrive's hosted signing
+  // page. The credit is awarded asynchronously by the server-verified webhook,
+  // not here — so on return the widget only shows a pending state. We clear the
+  // stored signal nonce before navigating away: it belongs to the test-mode
+  // client path and must not linger to be replayed when the customer returns.
+  useEffect(() => {
+    if (signPhase !== "redirecting") return;
+
+    let cancelled = false;
+    const controller = new AbortController();
+
+    const ctx = signCtxRef.current;
+    const { agreement } = buildAgreement(ctx);
+    const returnUrl = buildReturnUrl(window.location.href);
+
+    void runLiveSigningRedirect({
+      startSession: () =>
+        startSigningSession(
+          ctx.apiBaseUrl,
+          ctx.options.apiKey,
+          { ...agreement, returnUrl },
+          controller.signal,
+        ),
+      clearClientState: () => {
+        if (cancelled) return;
+        try {
+          sessionStorage.removeItem(signalNonceStorageKey(ctx.options.apiKey));
+        } catch {
+          // ignore
+        }
+        setSignalNonce(null);
+      },
+      navigate: (url) => {
+        if (cancelled) return;
+        window.location.assign(url);
+      },
+      onFailed: () => {
+        if (cancelled) return;
+        // Couldn't start the session — surface a recoverable error and drop
+        // back to the sign step so the customer can retry.
+        setSignPhase("idle");
+        onErrorRef.current?.({
+          code: "eid_signing_failed",
+          message: "Could not start signing. Please try again.",
+        });
+      },
+    });
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [signPhase]);
 
   const reset = () => {
     setSignPhase("idle");
@@ -1001,7 +1094,54 @@ export function BnplFlow({
           </div>
         )}
 
-        {phase === "sign" && signPhase === "idle" && (
+        {phase === "sign" && returnedFromSigning && (
+          <div data-pl-phase="sign-pending" className="pl-stack" style={{ gap: "0.875rem" }}>
+            <div className="pl-stack" style={{ gap: "0.25rem" }}>
+              <h3 className="pl-h2">Signing in progress</h3>
+              <p className="pl-caption">
+                We're confirming your {country.eid} signature with PayLater. You can close this
+                window — your purchase completes as soon as the signature is verified.
+              </p>
+            </div>
+
+            <div className="pl-sign-card" style={{ alignItems: "center" }}>
+              <EidLogo country={countryCode} size={28} />
+              <span className="pl-eyebrow" style={{ marginTop: "0.5rem" }}>
+                Awaiting confirmation
+              </span>
+              <span className="pl-amount-large">{usdt.toFixed(2)} USDT</span>
+            </div>
+
+            <div className="pl-btn-row" style={{ justifyContent: "center" }}>
+              <button
+                type="button"
+                className="pl-btn pl-btn-ghost"
+                onClick={() => {
+                  setReturnedFromSigning(false);
+                  reset();
+                }}
+              >
+                Start over
+              </button>
+            </div>
+          </div>
+        )}
+
+        {phase === "sign" && !returnedFromSigning && signPhase === "redirecting" && (
+          <div data-pl-phase="sign-redirecting" className="pl-stack" style={{ gap: "0.875rem" }}>
+            <div className="pl-stack" style={{ gap: "0.25rem" }}>
+              <h3 className="pl-h2">Opening {country.eid}</h3>
+              <p className="pl-caption">Taking you to {country.eid} to sign securely…</p>
+            </div>
+
+            <div className="pl-sign-card" style={{ alignItems: "center" }}>
+              <EidLogo country={countryCode} size={28} />
+              <span className="pl-amount-large">{usdt.toFixed(2)} USDT</span>
+            </div>
+          </div>
+        )}
+
+        {phase === "sign" && !returnedFromSigning && signPhase === "idle" && (
           <div data-pl-phase="sign" className="pl-stack" style={{ gap: "0.875rem" }}>
             <div className="pl-stack" style={{ gap: "0.25rem" }}>
               <h3 className="pl-h2">Sign with {country.eid}</h3>
@@ -1038,7 +1178,7 @@ export function BnplFlow({
               <button
                 type="button"
                 className="pl-btn pl-btn-primary"
-                onClick={() => setSignPhase("scan")}
+                onClick={() => setSignPhase(validatedMode === "live" ? "redirecting" : "scan")}
               >
                 <EidLogo country={countryCode} size={16} />
                 Sign with {country.eid}
@@ -1047,11 +1187,14 @@ export function BnplFlow({
           </div>
         )}
 
-        {phase === "sign" && signPhase !== "idle" && (
-          <Suspense fallback={null}>
-            <SignOverlay phase={signPhase} country={country} reference={reference} />
-          </Suspense>
-        )}
+        {phase === "sign" &&
+          !returnedFromSigning &&
+          signPhase !== "idle" &&
+          signPhase !== "redirecting" && (
+            <Suspense fallback={null}>
+              <SignOverlay phase={signPhase} country={country} reference={reference} />
+            </Suspense>
+          )}
 
         {phase === "done" && (
           <div

@@ -1,10 +1,13 @@
 /**
- * @dev Demo data for the eID phase. The widget never actually contacts an eID
- * provider in v0.x — it auto-advances through scan → scanned → signing →
- * verified phases on a fixed timer to give partners a fully interactive
+ * @dev Demo data for the eID phase — test mode only. In test mode the widget
+ * never contacts an eID provider; it auto-advances through scan → scanned →
+ * signing → verified on a fixed timer to give partners a fully interactive
  * preview without bringing real Scrive credentials into the SDK bundle.
  *
- * TODO (v1.0): replace mock flow with real Scrive eID integration when using the live widget in production.
+ * Live mode (`pk_live_*`) uses real Scrive eID: the widget redirects the
+ * customer to Scrive's hosted signing page and the verified identity is carried
+ * by the server-side `agreement.signed` webhook, so this demo data is never
+ * shown in live.
  */
 
 import type { CountryCode } from "../types";

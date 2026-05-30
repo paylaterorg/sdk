@@ -1,6 +1,6 @@
 {
   "name": "@paylater/sdk",
-  "version": "0.6.4",
+  "version": "1.0.0",
   "type": "module",
   "description": "Frictionless USDT checkout. Tap, sign, done. Pay within 30 days. Drop-in widget for partner platforms.",
   "license": "MIT",
@@ -58,13 +58,13 @@
     "prebuild": "rm -rf dist",
     "build": "tsup",
     "dev": "tsup --watch",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p tests/tsconfig.json",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "verify:bundle": "node scripts/assert-no-node-builtins.mjs",
-    "test": "tsx --test tests/**/*.test.ts",
+    "test": "tsx --test --test-force-exit --test-timeout=30000 tests/**/*.test.ts",
     "prepublishOnly": "npm run build && npm run verify:bundle"
   },
   "dependencies": {
