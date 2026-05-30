@@ -27,5 +27,6 @@
     "checkJs": false
   },
   "include": ["src/**/*"],
-  "exclude": ["dist", "node_modules", "examples", "tsup.config.ts", "eslint.config.js"]
+  "exclude": ["dist", "node_modules", "examples", "tsup.config.ts", "eslint.config.js"],
+  "references": [{ "path": "./tsconfig.node.json" }]
 }
